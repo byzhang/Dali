@@ -104,14 +104,17 @@ class NeuralNetworkLayer {
 template<typename R>
 class DragonModel {
     public:
-        int EMBEDDING_SIZE = 300;
-        int HIDDEN_SIZE = 100;
+        int EMBEDDING_SIZE = 50;
+        int HIDDEN_SIZE = 150;
         bool SEPARATE_EMBEDDINGS = false;
         bool SVD_INIT = true;
-        vector<int> LSTM_STACKS = { 100 , 50, 50 };
-        vector<int> OUTPUT_NN_SIZES = {HIDDEN_SIZE, 100, 100, 1};
+        vector<int> LSTM_STACKS = { 100 , 50 };
+        vector<int> OUTPUT_NN_SIZES = {HIDDEN_SIZE, 100, 1};
+
+        double DROPOUT_VALUE = 0.3;
+
         vector<typename NeuralNetworkLayer<R>::activation_t> OUTPUT_NN_ACTIVATIONS =
-            { MatOps<R>::tanh, MatOps<R>::tanh, NeuralNetworkLayer<R>::identity };
+            { MatOps<R>::tanh, NeuralNetworkLayer<R>::identity };
 
         Mat<R> embedding;
 
@@ -191,7 +194,10 @@ class DragonModel {
             return DragonModel(*this, false, true);
         }
 
-        Mat<R> words_to_repr(const vector<string>& words, StackedLSTM<R> model, Mat<R> embedding) {
+        Mat<R> words_to_repr(const vector<string>& words,
+                             StackedLSTM<R> model,
+                             Mat<R> embedding,
+                             bool use_dropout) {
             auto word_idxs = vocab.transform(words);
             Seq<Mat<R>> words_embeddings;
             for (auto word_idx: word_idxs) {
@@ -200,19 +206,20 @@ class DragonModel {
             }
             auto out_states = model.activate_sequence(model.initial_states(),
                                                       words_embeddings,
-                                                      0.0);
+                                                      use_dropout ? DROPOUT_VALUE : 0.0);
             return MatOps<R>::vstack(LSTM<R>::State::hiddens(out_states));
         }
 
         Mat<R> answer_score(const vector<string>& text,
                             const vector<string>& question,
-                            const vector<string>& answer) {
+                            const vector<string>& answer,
+                            bool use_dropout) {
             Mat<R> text_repr     = words_to_repr(text, text_model,
-                    SEPARATE_EMBEDDINGS ? text_embedding : embedding);
+                    SEPARATE_EMBEDDINGS ? text_embedding : embedding, use_dropout);
             Mat<R> question_repr = words_to_repr(question, question_model,
-                    SEPARATE_EMBEDDINGS ? question_embedding : embedding);
+                    SEPARATE_EMBEDDINGS ? question_embedding : embedding, use_dropout);
             Mat<R> answer_repr   = words_to_repr(answer, answer_model,
-                    SEPARATE_EMBEDDINGS ? answer_embedding : embedding);
+                    SEPARATE_EMBEDDINGS ? answer_embedding : embedding, use_dropout);
 
             Mat<R> hidden = words_repr_to_hidden.activate({text_repr,
                                                            question_repr,
@@ -237,10 +244,11 @@ class DragonModel {
 
         vector<Mat<R>> answer_scores(const vector<string>& text,
                                      const vector<string>& question,
-                                     const vector<vector<string>>& answers) {
+                                     const vector<vector<string>>& answers,
+                                     bool use_dropout) {
             vector<Mat<R>> scores;
             for (auto& answer: answers) {
-                scores.push_back(answer_score(text, question, answer));
+                scores.push_back(answer_score(text, question, answer, use_dropout));
             }
 
             return scores;
@@ -250,7 +258,7 @@ class DragonModel {
                      const vector<string>& question,
                      const vector<vector<string>>& answers,
                      int correct_answer) {
-            auto scores = answer_scores(text, question, answers);
+            auto scores = answer_scores(text, question, answers, true);
 
             R margin = 0.1;
 
@@ -266,7 +274,7 @@ class DragonModel {
         int predict(const vector<string>& text,
                     const vector<string>& question,
                     const vector<vector<string>>& answers) {
-            auto scores = answer_scores(text, question, answers);
+            auto scores = answer_scores(text, question, answers, false);
 
             return MatOps<R>::vstack(scores).argmax();
         }
@@ -362,7 +370,7 @@ int main(int argc, char** argv) {
 
     model_t model;
     auto params = model.parameters();
-    auto solver = Solver::AdaDelta<double>(params);
+    auto solver = Solver::Adam<double>(params);
 
     vector<model_t> thread_models;
 
