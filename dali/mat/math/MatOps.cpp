@@ -11,10 +11,13 @@ using utils::LambdaOperator;
 template<typename R>
 R MatOps<R>::EPS = 1e-9;
 
+#define DONT_COMPILE
+
 template<typename R>
 Mat<R> MatOps<R>::eltmul_broadcast(
         Mat<R> matrix1,
         Mat<R> matrix2) {
+    #ifndef DONT_COMPILE
     assert2(matrix1.dims(0) == matrix2.dims(0) && matrix2.dims(1) == 1,
             MS() << "Matrices " << matrix1 << " and " << matrix2
                  << " cannot be element multiplied with broadcast,"
@@ -27,12 +30,16 @@ Mat<R> MatOps<R>::eltmul_broadcast(
             GRAD(matrix2).noalias() += ((GET_MAT(matrix1)).array() * (GET_GRAD(out)).array()).matrix().rowwise().sum();
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::eltdivide_broadcast(
         Mat<R> matrix1,
         Mat<R> matrix2) {
+    #ifndef DONT_COMPILE
     assert2(matrix1.dims(0) == matrix2.dims(0) && matrix2.dims(1) == 1,
             MS() << "Matrices " << matrix1 << " and " << matrix2
                  << " cannot be element divided with broadcast,"
@@ -57,12 +64,16 @@ Mat<R> MatOps<R>::eltdivide_broadcast(
             ).matrix().rowwise().sum();
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::eltdivide_broadcast_reversed(
         Mat<R> matrix1,
         Mat<R> matrix2) {
+    #ifndef DONT_COMPILE
     assert2(matrix1.dims(0) == matrix2.dims(0) && matrix2.dims(1) == 1,
             MS() << "Matrices " << matrix1 << " and " << matrix2
                  << " cannot be element divided with broadcast,"
@@ -75,12 +86,16 @@ Mat<R> MatOps<R>::eltdivide_broadcast_reversed(
             GRAD(matrix2).noalias() += (GET_MAT(matrix1).array().inverse() * GET_GRAD(out).array()).rowwise().sum().matrix();
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::eltmul(
-    Mat<R> matrix1,
-    Mat<R> matrix2) {
+        Mat<R> matrix1,
+        Mat<R> matrix2) {
+    #ifndef DONT_COMPILE
     if (matrix1.dims(1) != matrix2.dims(1) && (matrix1.dims(1) == 1 || matrix2.dims(1) == 1)) {
         if (matrix1.dims(1) == 1) {
             return eltmul_broadcast(matrix2, matrix1);
@@ -97,10 +112,14 @@ Mat<R> MatOps<R>::eltmul(
             GRAD(matrix2).noalias() += ((GET_MAT(matrix1)).array() * (GET_GRAD(out)).array()).matrix();
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::max(Mat<R> matrix, R lower_bound) {
+    #ifndef DONT_COMPILE
     auto out = Mat<R>::empty_like(matrix);
     // out = max(matrix, lower_bound);
     GET_MAT(out) = GET_MAT(matrix).unaryExpr(
@@ -120,13 +139,16 @@ Mat<R> MatOps<R>::max(Mat<R> matrix, R lower_bound) {
             }
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::eltmul(
     Mat<R> matrix,
     R alpha) {
-
+    #ifndef DONT_COMPILE
     auto out = Mat<R>::empty_like(matrix);
     GET_MAT(out) = (GET_MAT(matrix).array() * alpha).matrix();
     if (graph::backprop_enabled)
@@ -134,10 +156,14 @@ Mat<R> MatOps<R>::eltmul(
             GRAD(matrix).noalias() += (alpha * (GET_GRAD(out)).array()).matrix();
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 vector<Mat<R>> MatOps<R>::eltmul(const vector<Mat<R>>& seq1, const vector<Mat<R>>& seq2) {
+    #ifndef DONT_COMPILE
     assert2(seq1.size() == seq2.size(), "Multiplying sequences of different sizes.");
 
     vector<Mat<R>> result(seq1.size());
@@ -145,6 +171,9 @@ vector<Mat<R>> MatOps<R>::eltmul(const vector<Mat<R>>& seq1, const vector<Mat<R>
         result[i] = seq1[i] * seq2[i];
     }
     return result;
+    #else
+    return {Mat<R>(1,1)};
+    #endif
 }
 
 
@@ -152,6 +181,7 @@ template<typename R>
 Mat<R> MatOps<R>::eltdivide(
     Mat<R> matrix1,
     Mat<R> matrix2) {
+    #ifndef DONT_COMPILE
     if (matrix1.dims(1) != matrix2.dims(1) && (matrix1.dims(1) == 1 || matrix2.dims(1) == 1)) {
         if (matrix1.dims(1) == 1) {
             return eltdivide_broadcast_reversed(matrix2, matrix1);
@@ -176,6 +206,9 @@ Mat<R> MatOps<R>::eltdivide(
             ).matrix();
         });
     return out;
+    #else
+    return {Mat<R>(1,1)};
+    #endif
 }
 
 
@@ -183,6 +216,7 @@ template<typename R>
 Mat<R> MatOps<R>::eltdivide(
     Mat<R> matrix,
     R alpha) {
+    #ifndef DONT_COMPILE
     auto out = Mat<R>::empty_like(matrix);
     GET_MAT(out) = (GET_MAT(matrix).array() / alpha).matrix();
     if (graph::backprop_enabled)
@@ -190,6 +224,9 @@ Mat<R> MatOps<R>::eltdivide(
             GRAD(matrix).noalias() += ((1.0 / alpha) * (GET_GRAD(out)).array()).matrix();
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 
@@ -197,6 +234,7 @@ template<typename R>
 Mat<R> MatOps<R>::eltmul_broadcast_rowwise(
     Mat<R> matrix1,
     Mat<R> row_vector) {
+    #ifndef DONT_COMPILE
     if (matrix1.dims(1) != row_vector.dims(1) || row_vector.dims(0) != 1)
         throw std::invalid_argument("Matrices A and B^T cannot be element multiplied with broadcast, they do not have the same dimensions.");
     auto out = Mat<R>::empty_like(matrix1);
@@ -207,10 +245,14 @@ Mat<R> MatOps<R>::eltmul_broadcast_rowwise(
             GRAD(row_vector).noalias() += (((GET_MAT(matrix1)).array() * (GET_GRAD(out)).array()).matrix().colwise().sum()).matrix();
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 vector<Mat<R>> MatOps<R>::eltmul_broadcast_rowwise(const vector<Mat<R>>& seq1, const vector<Mat<R>>& seq2) {
+    #ifndef DONT_COMPILE
     assert2(seq1.size() == seq2.size(), "Multiplying sequences of different sizes.");
 
     vector<Mat<R>> result(seq1.size());
@@ -218,12 +260,16 @@ vector<Mat<R>> MatOps<R>::eltmul_broadcast_rowwise(const vector<Mat<R>>& seq1, c
         result[i] = eltmul_broadcast_rowwise(seq1[i], seq2[i]);
     }
     return result;
+    #else
+    return {Mat<R>(1,1)};
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::eltmul_rowwise(
     Mat<R> matrix1,
     Mat<R> matrix2) {
+    #ifndef DONT_COMPILE
 
     if (matrix1.dims(0) != matrix2.dims(1) || matrix1.dims(1) != matrix2.dims(0))
         throw std::invalid_argument("Matrices A and B^T cannot be element-wise multiplied, they do not have the same dimensions.");
@@ -241,10 +287,14 @@ Mat<R> MatOps<R>::eltmul_rowwise(
             ).matrix().transpose();
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 vector<Mat<R>> MatOps<R>::eltmul_rowwise(const vector<Mat<R>>& seq1, const vector<Mat<R>>& seq2) {
+    #ifndef DONT_COMPILE
     assert2(seq1.size() == seq2.size(), "Multiplying sequences of different sizes.");
 
     vector<Mat<R>> result(seq1.size());
@@ -252,12 +302,16 @@ vector<Mat<R>> MatOps<R>::eltmul_rowwise(const vector<Mat<R>>& seq1, const vecto
         result[i] = eltmul_rowwise(seq1[i], seq2[i]);
     }
     return result;
+    #else
+    return {Mat<R>(1,1)};
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::add(
         Mat<R> matrix1,
         Mat<R> matrix2) {
+    #ifndef DONT_COMPILE
     if (matrix1.dims(1) != matrix2.dims(1) && (matrix1.dims(1) == 1 || matrix2.dims(1) == 1)) {
         if (matrix1.dims(1) == 1) {
             return add_broadcast(matrix2, matrix1);
@@ -274,6 +328,9 @@ Mat<R> MatOps<R>::add(
             GRAD(matrix2).noalias() += GET_GRAD(out);
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 
@@ -281,6 +338,7 @@ template<typename R>
 Mat<R> MatOps<R>::sub(
         Mat<R> matrix1,
         Mat<R> matrix2) {
+    #ifndef DONT_COMPILE
     if (matrix1.dims(1) != matrix2.dims(1) && (matrix1.dims(1) == 1 || matrix2.dims(1) == 1)) {
         if (matrix1.dims(1) == 1) {
             return sub_broadcast_reversed(matrix2, matrix1);
@@ -297,12 +355,16 @@ Mat<R> MatOps<R>::sub(
             GRAD(matrix2).noalias() -= GET_GRAD(out);
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::add(
         Mat<R> matrix1,
         R alpha) {
+    #ifndef DONT_COMPILE
     auto out = Mat<R>::empty_like(matrix1);
     GET_MAT(out).array() = GET_MAT(matrix1).array() + alpha;
     if (graph::backprop_enabled)
@@ -310,10 +372,14 @@ Mat<R> MatOps<R>::add(
             GRAD(matrix1).noalias() += GET_GRAD(out);
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::add_broadcast(Mat<R> matrix1, Mat<R> matrix2) {
+    #ifndef DONT_COMPILE
     // broadcast matrix 2:
     if (matrix1.dims(0) != matrix2.dims(0) || matrix2.dims(1) != 1)
             throw std::invalid_argument("Matrices cannot be added with broadcast, they do not have the same dimensions.");
@@ -325,10 +391,14 @@ Mat<R> MatOps<R>::add_broadcast(Mat<R> matrix1, Mat<R> matrix2) {
             GRAD(matrix2).noalias() += GET_GRAD(out).rowwise().sum();
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::sub_broadcast(Mat<R> matrix1, Mat<R> matrix2) {
+    #ifndef DONT_COMPILE
     // broadcast matrix 2:
     if (matrix1.dims(0) != matrix2.dims(0) || matrix2.dims(1) != 1)
         throw std::invalid_argument("Matrices cannot be substracted with broadcast, they do not have the same dimensions.");
@@ -340,10 +410,14 @@ Mat<R> MatOps<R>::sub_broadcast(Mat<R> matrix1, Mat<R> matrix2) {
             GRAD(matrix2).noalias() -= GET_GRAD(out).rowwise().sum();
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::sub_broadcast_reversed(Mat<R> matrix1, Mat<R> matrix2) {
+    #ifndef DONT_COMPILE
     // broadcast matrix 2:
     if (matrix1.dims(0) != matrix2.dims(0) || matrix2.dims(1) != 1)
         throw std::invalid_argument("Matrices cannot be substracted with broadcast, they do not have the same dimensions.");
@@ -355,10 +429,14 @@ Mat<R> MatOps<R>::sub_broadcast_reversed(Mat<R> matrix1, Mat<R> matrix2) {
             GRAD(matrix2).noalias() += GET_GRAD(out).rowwise().sum();
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::sub_broadcast_reversed(Mat<R> matrix, R other) {
+    #ifndef DONT_COMPILE
     auto out = Mat<R>::empty_like(matrix);
     GET_MAT(out) = (other - GET_MAT(matrix).array()).matrix();
     if (graph::backprop_enabled)
@@ -366,16 +444,24 @@ Mat<R> MatOps<R>::sub_broadcast_reversed(Mat<R> matrix, R other) {
             GRAD(matrix).noalias() -= GET_GRAD(out);
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::add(std::initializer_list<Mat<R>> matrices) {
+    #ifndef DONT_COMPILE
     auto matrices_vector = vector<Mat<R>>(matrices);
     return add(matrices_vector);
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::add(const std::vector<Mat<R>>& matrices) {
+    #ifndef DONT_COMPILE
     auto out = Mat<R>::zeros_like(*matrices.begin());
     for (auto& matrix : matrices)
         GET_MAT(out) += GET_MAT(matrix);
@@ -386,10 +472,14 @@ Mat<R> MatOps<R>::add(const std::vector<Mat<R>>& matrices) {
             }
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::square(Mat<R> matrix) {
+    #ifndef DONT_COMPILE
     auto out = Mat<R>::empty_like(matrix);
     GET_MAT(out) = GET_MAT(matrix).array().square();
     if (graph::backprop_enabled)
@@ -397,10 +487,14 @@ Mat<R> MatOps<R>::square(Mat<R> matrix) {
             GRAD(matrix).noalias() += 2.0 * ((GET_MAT(matrix)).array() * (GET_GRAD(out)).array()).matrix();
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::L2_norm(Mat<R> matrix) {
+    #ifndef DONT_COMPILE
     auto out = Mat<R>(1, 1, false);
     GET_MAT(out)(0) = GET_MAT(matrix).norm();
     if (graph::backprop_enabled)
@@ -408,10 +502,14 @@ Mat<R> MatOps<R>::L2_norm(Mat<R> matrix) {
             GRAD(matrix).noalias() += ((GET_MAT(matrix).array() / GET_MAT(out)(0)) * GET_GRAD(out)(0)).matrix();
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::sqrt(Mat<R> matrix) {
+    #ifndef DONT_COMPILE
     auto out = Mat<R>::empty_like(matrix);
     GET_MAT(out) = GET_MAT(matrix).array().sqrt();
     if (graph::backprop_enabled)
@@ -419,10 +517,14 @@ Mat<R> MatOps<R>::sqrt(Mat<R> matrix) {
             GRAD(matrix).noalias() += 0.5 * ((GET_MAT(out)).array().inverse() * (GET_GRAD(out)).array()).matrix();
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::elt_inv(Mat<R> matrix) {
+    #ifndef DONT_COMPILE
     auto out = Mat<R>::empty_like(matrix);
     GET_MAT(out) = GET_MAT(matrix).array().inverse();
     if (graph::backprop_enabled)
@@ -430,17 +532,25 @@ Mat<R> MatOps<R>::elt_inv(Mat<R> matrix) {
             GRAD(matrix).noalias() += -((GET_MAT(out)).array().square() * GET_GRAD(out).array()).matrix();
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::fill(Mat<R> matrix, R filler) {
+    #ifndef DONT_COMPILE
     auto out = Mat<R>::empty_like(matrix);
     GET_MAT(out).fill(filler);
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::pow(Mat<R> matrix, R other) {
+    #ifndef DONT_COMPILE
     if (other == (R) -1.0) {
         return MatOps<R>::elt_inv(matrix);
     } else if (other == (R) 0.0){
@@ -459,10 +569,14 @@ Mat<R> MatOps<R>::pow(Mat<R> matrix, R other) {
             GRAD(matrix).noalias() += other * ((GET_MAT(matrix)).array().pow(other - 1.0) * (GET_GRAD(out)).array()).matrix();
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::pow(Mat<R> matrix, Mat<R> other) {
+    #ifndef DONT_COMPILE
     assert2(other.dims(0) == 1 && other.dims(1) == 1, "exponent must be a 1x1 matrix.");
     auto out = Mat<R>::empty_like(matrix);
     GET_MAT(out) = GET_MAT(matrix).array().pow(GET_MAT(other)(0));
@@ -474,10 +588,14 @@ Mat<R> MatOps<R>::pow(Mat<R> matrix, Mat<R> other) {
             ).sum();
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::sigmoid(Mat<R> matrix) {
+    #ifndef DONT_COMPILE
     auto out = Mat<R>::empty_like(matrix);
     GET_MAT(out) = GET_MAT(matrix).unaryExpr(utils::sigmoid_operator<R>());
     if (graph::backprop_enabled)
@@ -485,11 +603,15 @@ Mat<R> MatOps<R>::sigmoid(Mat<R> matrix) {
             GRAD(matrix).noalias() += (((GET_MAT(out)).array() - GET_MAT(out).array().square()) * GET_GRAD(out).array()).matrix();
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 
 template<typename R>
 Mat<R> MatOps<R>::softmax_no_grad(Mat<R> matrix, R temperature) {
+    #ifndef DONT_COMPILE
     auto out = Mat<R>::empty_like(matrix);
 
     auto layer_max = GET_MAT(matrix).colwise().maxCoeff().array().matrix();
@@ -500,10 +622,14 @@ Mat<R> MatOps<R>::softmax_no_grad(Mat<R> matrix, R temperature) {
     auto total_distribution = exped_distributions.colwise().sum().array().matrix();
     GET_MAT(out) = (exped_distributions.array().rowwise() / total_distribution.row(0).array());
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::softmax(Mat<R> matrix, R temperature) {
+    #ifndef DONT_COMPILE
     Mat<R> out = MatOps<R>::softmax_no_grad(matrix, temperature);
     if (graph::backprop_enabled && !matrix.constant)
         graph::emplace_back([matrix, temperature, out]() {
@@ -517,10 +643,14 @@ Mat<R> MatOps<R>::softmax(Mat<R> matrix, R temperature) {
             }
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::softmax_transpose(Mat<R> matrix, R temperature) {
+    #ifndef DONT_COMPILE
     Mat<R> out = MatOps<R>::softmax_no_grad_transpose(matrix, temperature);
     if (graph::backprop_enabled && !matrix.constant)
         graph::emplace_back([matrix, temperature, out]() {
@@ -534,10 +664,14 @@ Mat<R> MatOps<R>::softmax_transpose(Mat<R> matrix, R temperature) {
             }
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::softmax_no_grad_transpose(Mat<R> matrix, R temperature) {
+    #ifndef DONT_COMPILE
     auto out = Mat<R>::empty_like(matrix);
     auto layer_max = GET_MAT(matrix).rowwise().maxCoeff().array().matrix();
     auto exped_distributions = (GET_MAT(matrix).colwise() - layer_max.row(0)).array().exp().matrix();
@@ -545,10 +679,14 @@ Mat<R> MatOps<R>::softmax_no_grad_transpose(Mat<R> matrix, R temperature) {
     auto total_distribution = exped_distributions.rowwise().sum().array().matrix();
     GET_MAT(out) = (exped_distributions.array().colwise() / total_distribution.col(0).array());
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 vector<Mat<R>> MatOps<R>::softmax_no_grad(const vector<Mat<R>>& matrices, R temperature) {
+    #ifndef DONT_COMPILE
     vector<Mat<R>> out;
     out.reserve(matrices.size());
     assert2(matrices.size() > 0, "Must be a non empty list of vectors to softmax.");
@@ -568,10 +706,14 @@ vector<Mat<R>> MatOps<R>::softmax_no_grad(const vector<Mat<R>>& matrices, R temp
         GET_MAT(mat)(0) /= total;
     }
     return out;
+    #else
+    return {Mat<R>(1,1)};
+    #endif
 }
 
 template<typename R>
 vector<Mat<R>> MatOps<R>::softmax(const vector<Mat<R>>& matrices, R temperature) {
+    #ifndef DONT_COMPILE
     vector<Mat<R>> out = MatOps<R>::softmax_no_grad(matrices, temperature);
     if (graph::backprop_enabled)
         graph::emplace_back([temperature, out, matrices]() {
@@ -594,10 +736,14 @@ vector<Mat<R>> MatOps<R>::softmax(const vector<Mat<R>>& matrices, R temperature)
             }
         });
     return out;
+    #else
+    return {Mat<R>(1,1)};
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::steep_sigmoid(Mat<R> matrix, R aggressiveness) {
+    #ifndef DONT_COMPILE
     auto out = Mat<R>::empty_like(matrix);
     GET_MAT(out) = GET_MAT(matrix).unaryExpr(utils::steep_sigmoid_operator<R>(aggressiveness));
     if (graph::backprop_enabled)
@@ -605,10 +751,14 @@ Mat<R> MatOps<R>::steep_sigmoid(Mat<R> matrix, R aggressiveness) {
             GRAD(matrix).noalias() += (aggressiveness * ((GET_MAT(out)).array() - GET_MAT(out).array().square()) * GET_GRAD(out).array()).matrix();
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::sum(Mat<R> matrix) {
+    #ifndef DONT_COMPILE
     Mat<R> out (1,1, false);
     GET_MAT(out)(0) = GET_MAT(matrix).array().sum();
     if (graph::backprop_enabled)
@@ -616,11 +766,15 @@ Mat<R> MatOps<R>::sum(Mat<R> matrix) {
             GRAD(matrix).array() += GET_GRAD(out)(0);
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 
 template<typename R>
 Mat<R> MatOps<R>::mean(Mat<R> matrix) {
+    #ifndef DONT_COMPILE
     Mat<R> out (1,1, false);
     GET_MAT(out)(0) = GET_MAT(matrix).array().mean();
     if (graph::backprop_enabled)
@@ -628,12 +782,16 @@ Mat<R> MatOps<R>::mean(Mat<R> matrix) {
             GRAD(matrix).array() += (1.0 / (matrix.number_of_elements())) * GET_GRAD(out)(0);
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 
 
 template<typename R>
 Mat<R> MatOps<R>::sigmoid_binary_cross_entropy(Mat<R> matrix, R t) {
+    #ifndef DONT_COMPILE
     assert(0 <= t && t <= 1);
     assert(matrix.dims().size() > 1);
     auto out = Mat<R>::empty_like(matrix);
@@ -652,10 +810,14 @@ Mat<R> MatOps<R>::sigmoid_binary_cross_entropy(Mat<R> matrix, R t) {
             GRAD(matrix).array() += (sigmoided_input->array() - t) * GET_GRAD(out).array();
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::binary_cross_entropy(Mat<R> matrix, R t) {
+    #ifndef DONT_COMPILE
     assert(0 <= t && t <= 1);
     assert(matrix.dims().size() > 1);
     Mat<R> out =  Mat<R>(
@@ -682,10 +844,14 @@ Mat<R> MatOps<R>::binary_cross_entropy(Mat<R> matrix, R t) {
         });
 
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::cross_entropy(Mat<R> matrix, uint answer_idx) {
+    #ifndef DONT_COMPILE
     DEBUG_ASSERT_BOUNDS(GET_MAT(matrix),0.0,1.0 + EPS);
     assert(matrix.dims().size() > 1);
     assert(answer_idx < matrix.dims(0));
@@ -705,10 +871,14 @@ Mat<R> MatOps<R>::cross_entropy(Mat<R> matrix, uint answer_idx) {
             GRAD(matrix).row(answer_idx).array() += -(x.row(answer_idx).array() + EPS).inverse() * GET_GRAD(out).array();
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::cross_entropy(Mat<R> matrix, Mat<R> target) {
+    #ifndef DONT_COMPILE
     assert2(matrix.dims(0) == target.dims(0) && matrix.dims(1) == target.dims(1),
         "Matrix and target must have same dimension");
 
@@ -724,11 +894,15 @@ Mat<R> MatOps<R>::cross_entropy(Mat<R> matrix, Mat<R> target) {
             GRAD(target).noalias() -= ((x.log()) * GET_GRAD(out).array()).matrix();
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 
 template<typename R>
 Mat<R> MatOps<R>::softmax_cross_entropy(Mat<R> matrix, uint answer_idx) {
+    #ifndef DONT_COMPILE
     Mat<R> out =  Mat<R>(1, 1, false);
     Mat<R> probs = softmax_no_grad(matrix);
     GET_MAT(out)(0,0) = -std::log(GET_MAT(probs)(answer_idx, 0));
@@ -740,10 +914,14 @@ Mat<R> MatOps<R>::softmax_cross_entropy(Mat<R> matrix, uint answer_idx) {
             GRAD(matrix)(answer_idx, 0) -= 1 * GET_GRAD(out)(0,0);
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::softmax_cross_entropy(Mat<R> matrix, Indexing::Index targets) {
+    #ifndef DONT_COMPILE
     Mat<R> out =  Mat<R>(1, targets.size(), false);
     Mat<R> probs = softmax_no_grad(matrix);
     for (int i = 0; i < targets.size(); i++) {
@@ -760,10 +938,14 @@ Mat<R> MatOps<R>::softmax_cross_entropy(Mat<R> matrix, Indexing::Index targets) 
             }
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::margin_loss(Mat<R> matrix, uint answer_idx, R margin) {
+    #ifndef DONT_COMPILE
     // Exprected input is a column vector
     assert(answer_idx < matrix.dims(0));
     assert(matrix.dims(1) == 1);
@@ -773,10 +955,14 @@ Mat<R> MatOps<R>::margin_loss(Mat<R> matrix, uint answer_idx, R margin) {
         error = error + MatOps<R>::max(matrix[idx] - matrix[answer_idx] + margin, 0.0);
     }
     return error;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::log(Mat<R> matrix) {
+    #ifndef DONT_COMPILE
     assert(matrix.dims().size() > 1);
     auto out = Mat<R>::empty_like(matrix);
     GET_MAT(out) = GET_MAT(matrix).array().log();
@@ -788,10 +974,14 @@ Mat<R> MatOps<R>::log(Mat<R> matrix) {
             ).matrix();
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::exp(Mat<R> matrix) {
+    #ifndef DONT_COMPILE
     assert(matrix.dims().size() > 1);
     auto out = Mat<R>::empty_like(matrix);
     GET_MAT(out) = GET_MAT(matrix).array().exp();
@@ -800,10 +990,14 @@ Mat<R> MatOps<R>::exp(Mat<R> matrix) {
             GRAD(matrix).noalias() += (GET_MAT(out).array() * GET_GRAD(out).array()).matrix();
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::hstack(Mat<R> matrix1, Mat<R> matrix2) {
+    #ifndef DONT_COMPILE
     if (matrix1.dims(0) != matrix2.dims(0))
         throw std::invalid_argument("Matrices cannot be joined -- they do not have the same number of rows.");
     Mat<R> out (
@@ -819,16 +1013,24 @@ Mat<R> MatOps<R>::hstack(Mat<R> matrix1, Mat<R> matrix2) {
             GRAD(matrix2).noalias() += GET_GRAD(out).block(0,matrix1.dims(1), matrix2.dims(0), matrix2.dims(1));
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::hstack(std::initializer_list<Mat<R>> matrices) {
+    #ifndef DONT_COMPILE
     vector<Mat<R>> matrices_vector(matrices);
     return hstack(matrices_vector);
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::hstack(const std::vector<Mat<R>>& matrices) {
+    #ifndef DONT_COMPILE
     int n = -1;
     int d_total = 0;
     for (auto& mat : matrices) {
@@ -860,10 +1062,14 @@ Mat<R> MatOps<R>::hstack(const std::vector<Mat<R>>& matrices) {
             }
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::vstack(Mat<R> matrix1, Mat<R> matrix2) {
+    #ifndef DONT_COMPILE
     if (matrix1.dims(1) != matrix2.dims(1))
         throw std::invalid_argument("Matrices cannot be horizontally stacked -- they do not have the same number of cols.");
     Mat<R> out (
@@ -879,16 +1085,24 @@ Mat<R> MatOps<R>::vstack(Mat<R> matrix1, Mat<R> matrix2) {
             GRAD(matrix2).noalias() += GET_GRAD(out).block(matrix1.dims(0),0, matrix2.dims(0), matrix2.dims(1));
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::vstack(std::initializer_list<Mat<R>> matrices) {
+    #ifndef DONT_COMPILE
     vector<Mat<R>> matrices_vector(matrices);
     return vstack(matrices_vector);
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::vstack(const std::vector<Mat<R>>& matrices) {
+    #ifndef DONT_COMPILE
     assert(matrices.size() > 0);
     assert(matrices[0].dims().size() > 1);
     int d = matrices[0].dims(1);
@@ -918,10 +1132,14 @@ Mat<R> MatOps<R>::vstack(const std::vector<Mat<R>>& matrices) {
             }
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::transpose(Mat<R> matrix) {
+    #ifndef DONT_COMPILE
     assert(matrix.dims().size() > 1);
     Mat<R> out (
         matrix.dims(1),
@@ -933,10 +1151,14 @@ Mat<R> MatOps<R>::transpose(Mat<R> matrix) {
             GRAD(matrix).noalias() += (GET_GRAD(out)).transpose();
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::tanh(Mat<R> matrix) {
+    #ifndef DONT_COMPILE
     auto out = Mat<R>::empty_like(matrix);
     GET_MAT(out) = GET_MAT(matrix).unaryExpr(utils::tanh_operator<R>());
     if (graph::backprop_enabled)
@@ -944,10 +1166,14 @@ Mat<R> MatOps<R>::tanh(Mat<R> matrix) {
             GRAD(matrix).noalias() += (GET_MAT(out).unaryExpr(utils::dtanh_operator<R>()).array() * GET_GRAD(out).array()).matrix();
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::relu(Mat<R> matrix) {
+    #ifndef DONT_COMPILE
     auto out = Mat<R>::empty_like(matrix);
     GET_MAT(out) = GET_MAT(matrix).unaryExpr(utils::relu_operator<R>());
     if (graph::backprop_enabled)
@@ -955,10 +1181,14 @@ Mat<R> MatOps<R>::relu(Mat<R> matrix) {
             GRAD(matrix).noalias() += (GET_MAT(out).unaryExpr(utils::max_operator<R>()).array() * GET_GRAD(out).array()).matrix();
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::abs(Mat<R> matrix) {
+    #ifndef DONT_COMPILE
     auto out = Mat<R>::empty_like(matrix);
     GET_MAT(out) = GET_MAT(matrix).array().abs().matrix();
     if (graph::backprop_enabled)
@@ -966,12 +1196,16 @@ Mat<R> MatOps<R>::abs(Mat<R> matrix) {
             GRAD(matrix).noalias() += (GET_MAT(matrix).unaryExpr(utils::sign_operator<R>()).array() * GET_GRAD(out).array()).matrix();
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::mul(
-    Mat<R> matrix1,
-    Mat<R> matrix2) {
+        Mat<R> matrix1,
+        Mat<R> matrix2) {
+    #ifndef DONT_COMPILE
     assert2(matrix1.dims(1) == matrix2.dims(0), "matmul dimensions misaligned.");
     Mat<R> out (
         matrix1.dims(0),
@@ -984,13 +1218,17 @@ Mat<R> MatOps<R>::mul(
             GRAD(matrix2).noalias() += GET_MAT(matrix1).transpose() * (GET_GRAD(out));
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::quadratic_form(
-    Mat<R> left,
-    Mat<R> weights,
-    Mat<R> right) {
+        Mat<R> left,
+        Mat<R> weights,
+        Mat<R> right) {
+    #ifndef DONT_COMPILE
 
     assert2(weights.dims(1) == right.dims(0), "Quadratic form right matrix has wrong dimensions.");
     assert2(left.dims(0) == weights.dims(0) , "Quadratic form left matrix has wrong dimensions.");
@@ -1017,13 +1255,17 @@ Mat<R> MatOps<R>::quadratic_form(
         GET_MAT(out) = GET_MAT(left).transpose() * GET_MAT(weights) * GET_MAT(right);
     }
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::mul_with_bias(
-    Mat<R> matrix1,
-    Mat<R> matrix2,
-    Mat<R> bias) {
+        Mat<R> matrix1,
+        Mat<R> matrix2,
+        Mat<R> bias) {
+    #ifndef DONT_COMPILE
     assert2(matrix1.dims(1) == matrix2.dims(0), "matmul dimensions misaligned.");
     if (matrix1.dims(0) != bias.dims(0) || bias.dims(1) != 1)
         throw std::invalid_argument("Matrices cannot be multiplied with broadcast, they do not have the same dimensions.");
@@ -1039,15 +1281,19 @@ Mat<R> MatOps<R>::mul_with_bias(
             GRAD(bias).noalias()    += GET_GRAD(out).rowwise().sum().matrix();
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::mul_add_broadcast_mul_with_bias(
-    Mat<R> matrix1,
-    Mat<R> input_to_1,
-    Mat<R> matrix2,
-    Mat<R> input_to_2,
-    Mat<R> bias) {
+        Mat<R> matrix1,
+        Mat<R> input_to_1,
+        Mat<R> matrix2,
+        Mat<R> input_to_2,
+        Mat<R> bias) {
+    #ifndef DONT_COMPILE
     assert2(matrix1.dims(1) == input_to_1.dims(0), "matmul 1 dimensions misaligned.");
     if (matrix2.dims(1) != input_to_2.dims(0))
         throw std::invalid_argument("matmul 2 dimensions misaligned.");
@@ -1084,6 +1330,9 @@ Mat<R> MatOps<R>::mul_add_broadcast_mul_with_bias(
             GRAD(bias).noalias() += GET_GRAD(out).rowwise().sum();
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 
@@ -1095,6 +1344,7 @@ Mat<R> MatOps<R>::mul_add_mul_with_bias(std::initializer_list<Mat<R>> matrices) 
 
 template<typename R>
 Mat<R> MatOps<R>::mul_add_mul_with_bias(const vector<Mat<R>>& matrices) {
+    #ifndef DONT_COMPILE
     // broacast to largest input size
     dim_t max_broadcast = matrices[1].dims(1);
     for (auto matrices_ptr = matrices.begin()+1; matrices_ptr < matrices.end(); matrices_ptr+=2) {
@@ -1148,16 +1398,20 @@ Mat<R> MatOps<R>::mul_add_mul_with_bias(const vector<Mat<R>>& matrices) {
 
     DEBUG_ASSERT_NOT_NAN(GET_MAT(out));
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 // operation of the form (A * x + B * y) + C, called with mul_add_mul_with_bias(A, x, B, y, C)
 template<typename R>
 Mat<R> MatOps<R>::mul_add_mul_with_bias(
-    Mat<R> matrix1,
-    Mat<R> input_to_1,
-    Mat<R> matrix2,
-    Mat<R> input_to_2,
-    Mat<R> bias) {
+        Mat<R> matrix1,
+        Mat<R> input_to_1,
+        Mat<R> matrix2,
+        Mat<R> input_to_2,
+        Mat<R> bias) {
+    #ifndef DONT_COMPILE
     DEBUG_ASSERT_NOT_NAN(GET_MAT(bias));
     assert2(matrix1.dims(1) == input_to_1.dims(0), "matmul 1 dimensions misaligned.");
     if (matrix2.dims(1) != input_to_2.dims(0))
@@ -1197,6 +1451,9 @@ Mat<R> MatOps<R>::mul_add_mul_with_bias(
             GRAD(bias).noalias()        += GET_GRAD(out).rowwise().sum();
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
@@ -1204,6 +1461,7 @@ Mat<R> MatOps<R>::rows_pluck(
         Mat<R> matrix,
         Indexing::Index indices
         ) {
+    #ifndef DONT_COMPILE
     Mat<R> out (
         matrix.dims(1),
         indices.size(),
@@ -1223,12 +1481,16 @@ Mat<R> MatOps<R>::rows_pluck(
         });
     }
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::dropout(
-    Mat<R> matrix,
-    R drop_prob) {
+        Mat<R> matrix,
+        R drop_prob) {
+    #ifndef DONT_COMPILE
 
     assert(0.0 <= drop_prob && drop_prob <= 1.0);
 
@@ -1238,7 +1500,10 @@ Mat<R> MatOps<R>::dropout(
 
     auto out = Mat<R>::empty_like(matrix);
 
-    auto bool_mat = std::make_shared<Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic>>(matrix.dims(0), matrix.dims(1));
+    auto bool_mat = std::make_shared<Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic>>(
+        matrix.dims(0),
+        matrix.dims(1)
+    );
 
     std::default_random_engine generator;
     std::bernoulli_distribution distribution(1.0 - drop_prob);
@@ -1263,12 +1528,16 @@ Mat<R> MatOps<R>::dropout(
         });
     }
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::dropout_normalized(
-    Mat<R> matrix,
-    R drop_prob) {
+        Mat<R> matrix,
+        R drop_prob) {
+    #ifndef DONT_COMPILE
 
     assert(0.0 <= drop_prob && drop_prob <= 1.0);
 
@@ -1278,7 +1547,10 @@ Mat<R> MatOps<R>::dropout_normalized(
 
     auto out = Mat<R>::empty_like(matrix);
 
-    auto bool_mat = std::make_shared<Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic>>(matrix.dims(0), matrix.dims(1));
+    auto bool_mat = std::make_shared<Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic>>(
+        matrix.dims(0),
+        matrix.dims(1)
+    );
 
     std::default_random_engine generator;
     std::bernoulli_distribution distribution(1.0 - drop_prob);
@@ -1304,37 +1576,52 @@ Mat<R> MatOps<R>::dropout_normalized(
         });
     }
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 vector<Mat<R>> MatOps<R>::dropout_normalized(
-    const vector<Mat<R>>& matrices,
-    R drop_prob) {
+        const vector<Mat<R>>& matrices,
+        R drop_prob) {
+    #ifndef DONT_COMPILE
     vector<Mat<R>> dropped_matrices;
     dropped_matrices.reserve(matrices.size());
     for (auto& mat : matrices) {
         dropped_matrices.emplace_back(dropout_normalized(mat, drop_prob));
     }
     return dropped_matrices;
+    #else
+    return {Mat<R>(1,1)};
+    #endif
 }
 
 template<typename R>
 vector<Mat<R>> MatOps<R>::dropout(
-    const vector<Mat<R>>& matrices,
-    R drop_prob) {
+        const vector<Mat<R>>& matrices,
+        R drop_prob) {
+    #ifndef DONT_COMPILE
     vector<Mat<R>> dropped_matrices;
     dropped_matrices.reserve(matrices.size());
     for (auto& mat : matrices) {
         dropped_matrices.emplace_back(dropout(mat, drop_prob));
     }
     return dropped_matrices;
+    #else
+    return {Mat<R>(1,1)};
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::fast_dropout(Mat<R> matrix) {
+    #ifndef DONT_COMPILE
     auto out = Mat<R>::empty_like(matrix);
 
-    auto randn_mat = std::make_shared<Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic>>(matrix.dims(0), matrix.dims(1));
+    auto randn_mat = std::make_shared<Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic>>(
+        matrix.dims(0),
+        matrix.dims(1)
+    );
 
     std::default_random_engine generator;
     std::normal_distribution<R> distribution(1.0, 1.0);
@@ -1359,6 +1646,9 @@ Mat<R> MatOps<R>::fast_dropout(Mat<R> matrix) {
         });
     }
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
@@ -1366,8 +1656,10 @@ Mat<R> MatOps<R>::rows_cols_pluck(
         Mat<R> matrix,
         Indexing::Index row_indices,
         Indexing::Index col_indices) {
+    #ifndef DONT_COMPILE
     if (row_indices.size() != col_indices.size())
-        throw std::invalid_argument("Cannot pluck column row pairs, not the same amount of row and column indices.");
+        throw std::invalid_argument("Cannot pluck column row pairs, not the "
+            "same amount of row and column indices.");
         Mat<R> out (
             1,
             row_indices.size(),
@@ -1387,12 +1679,16 @@ Mat<R> MatOps<R>::rows_cols_pluck(
         });
     }
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::row_pluck(
         Mat<R> matrix,
         int row) {
+    #ifndef DONT_COMPILE
     Mat<R> out (matrix.dims(1), 1, false);
     GET_MAT(out) = GET_MAT(matrix).row(row).transpose();
     if (graph::backprop_enabled)
@@ -1400,12 +1696,16 @@ Mat<R> MatOps<R>::row_pluck(
             GRAD(matrix).row(row).noalias() += GET_GRAD(out).col(0).transpose();
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::col_pluck(
         Mat<R> matrix,
         int col) {
+    #ifndef DONT_COMPILE
     Mat<R> out (matrix.dims(0), 1, false);
     GET_MAT(out) = GET_MAT(matrix).col(col);
     if (graph::backprop_enabled)
@@ -1413,30 +1713,42 @@ Mat<R> MatOps<R>::col_pluck(
             GRAD(matrix).col(col).noalias() += GET_GRAD(out).col(0).transpose();
         });
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::consider_constant_if(
         Mat<R> matrix,
         bool should_consider_constant) {
+    #ifndef DONT_COMPILE
     if (should_consider_constant)
         return consider_constant(matrix);
     return matrix;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::consider_constant(
         Mat<R> matrix
         ) {
+    #ifndef DONT_COMPILE
     // perform a copy of the matrix that references
     // everything and owns nothing. A true nomad.
     Mat<R> out(matrix, false, false);
     out.constant = true;
     return out;
+    #else
+    return Mat<R>(1,1);
+    #endif
 }
 
 template<typename R>
 vector<size_t> MatOps<R>::argsort_rowwise(Mat<R> m) {
+    #ifndef DONT_COMPILE
     // initialize original index locations
     vector<size_t> idx(m.dims(0));
     for (size_t i = 0; i != idx.size(); ++i) idx[i] = i;
@@ -1446,10 +1758,14 @@ vector<size_t> MatOps<R>::argsort_rowwise(Mat<R> m) {
         return GET_MAT(m)(i1) < GET_MAT(m)(i2);
     });
     return idx;
+    #else
+    return {};
+    #endif
 }
 
 template<typename R>
 vector<size_t> MatOps<R>::argsort(const vector<Mat<R>>& v) {
+    #ifndef DONT_COMPILE
     // initialize original index locations
     vector<size_t> idx(v.size());
     for (size_t i = 0; i != idx.size(); ++i) idx[i] = i;
@@ -1459,19 +1775,26 @@ vector<size_t> MatOps<R>::argsort(const vector<Mat<R>>& v) {
        [&v](size_t i1, size_t i2) {return GET_MAT(v[i1])(0) < GET_MAT(v[i2])(0);});
 
     return idx;
+    #else
+    return {};
+    #endif
 }
 
 template<typename R>
 void MatOps<R>::resize(const Mat<R>& mat, dim_t n, dim_t d) {
+    #ifndef DONT_COMPILE
     mat.w()->dims[0] = n;
     mat.w()->dims[1] = d;
     GET_MAT(mat).conservativeResize(n, d);
     GET_GRAD(mat).conservativeResize(n, d);
+    #else
+    #endif
 }
 
 
 template<typename R>
 int MatOps<R>::argmax(const Mat<R>& mat) {
+    #ifndef DONT_COMPILE
     int i = 0;
     R current_max = -std::numeric_limits<R>::infinity();
     auto ptr = mat.w()->data();
@@ -1483,10 +1806,14 @@ int MatOps<R>::argmax(const Mat<R>& mat) {
         ptr++;
     }
     return i;
+    #else
+    return 0;
+    #endif
 }
 
 template<typename R>
 int MatOps<R>::argmax_slice(const Mat<R>& mat, int lower, int upper) {
+    #ifndef DONT_COMPILE
     int i = 0;
     R current_max = -std::numeric_limits<R>::infinity();
     auto ptr = mat.w()->data();
@@ -1498,6 +1825,9 @@ int MatOps<R>::argmax_slice(const Mat<R>& mat, int lower, int upper) {
         ptr++;
     }
     return i;
+    #else
+    return 0;
+    #endif
 }
 
 template class MatOps<float>;
