@@ -120,7 +120,6 @@ Mat<R>::Mat(dim_t n, dim_t d, typename weights<R>::initializer_t wi) :
     m = make_shared<MatInternal<R>>(n, d, false);
     // We always reset the grad calculation
     g = make_shared<GradInternal<R>>(n, d, true);
-
     wi(*this);
 }
 

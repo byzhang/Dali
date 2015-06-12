@@ -5,14 +5,17 @@ file(GLOB_RECURSE DaliSources "${DaliDir}/*.cpp")
 file(GLOB_RECURSE DaliTemplates "${DaliDir}/*.cpp.template")
 file(GLOB_RECURSE DaliCudaSources "${DaliDir}/*.cu")
 
-SET(OLD_CXX_FLAGS ${CMAKE_CXX_FLAGS})
-SET(CMAKE_CXX_FLAGS "-O3 -w -fPIC ${CUDA_EXTRA_FLAGS}")
 
-cuda_add_library(dali_cuda ${DaliCudaSources})
-target_link_libraries(dali_cuda ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES})
+if (WITH_CUDA)
+    SET(OLD_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+    SET(CMAKE_CXX_FLAGS "-O3 -w -fPIC ${CUDA_EXTRA_FLAGS}")
+    cuda_add_library(dali_cuda ${DaliCudaSources})
+    target_link_libraries(dali_cuda ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES})
+    SET(CMAKE_CXX_FLAGS ${OLD_CXX_FLAGS})
+endif(WITH_CUDA)
 
-SET(CMAKE_CXX_FLAGS ${OLD_CXX_FLAGS})
-
+cuda_compile(xx_test ${DaliCudaSources})
+message("${xx_test}")
 
 # Remove tests from compilation
 file(GLOB_RECURSE DaliTests "${DaliDir}/tests.cpp")
@@ -44,7 +47,6 @@ if (BLAS_FOUND AND MKL_FOUND)
 endif (BLAS_FOUND AND MKL_FOUND)
 
 target_link_libraries(dali ${ZLIB_LIBRARIES}
-                           dali_cuda
                            proto
                            SQLiteCpp
                            redox_static
@@ -55,7 +57,11 @@ target_link_libraries(dali ${ZLIB_LIBRARIES}
                            ${MKL_LIBRARIES}
                            ${GFLAGS_LIBRARIES})
 if (GPERFTOOLS_FOUND)
-  target_link_libraries(dali ${GPERFTOOLS_LIBRARIES})
+    target_link_libraries(dali ${GPERFTOOLS_LIBRARIES})
 endif (GPERFTOOLS_FOUND)
+if (WITH_CUDA)
+    target_link_libraries(dali dali_cuda)
+endif (WITH_CUDA)
+
 
 add_testsuite("test_dali" "dali" "${DaliTests}")

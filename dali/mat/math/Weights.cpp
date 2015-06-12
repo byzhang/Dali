@@ -1,5 +1,7 @@
 #include "Weights.h"
 
+#include "mshadow/random.h"
+
 #include "dali/mat/math/__MatMacros__.h"
 
 using utils::assert2;
@@ -12,7 +14,7 @@ typename weights<R>::initializer_t weights<R>::uninitialized() {
 template<typename R>
 typename weights<R>::initializer_t weights<R>::zeros() {
     return [](Mat<R>& matrix){
-        //GET_MAT(matrix).fill(0);
+        tensor_fill(GET_MAT(matrix), 0);
     };
 };
 
@@ -30,20 +32,15 @@ typename weights<R>::initializer_t weights<R>::eye(R diag) {
 template<typename R>
 typename weights<R>::initializer_t weights<R>::uniform(R lower, R upper) {
     return [lower, upper](Mat<R>& matrix){
-        // std::default_random_engine generator;
-        // std::uniform_real_distribution<R> distribution(lower, upper);
-        // std::random_device rd;
-        // generator.seed(rd());
-        // auto randn = [&] (int) {return distribution(generator);};
-        // GET_MAT(matrix) = MatInternal<R>::eigen_mat::NullaryExpr(matrix.dims(0),
-        //                                     matrix.dims(1),
-        //                                     randn);
+        std::random_device rd;
+        mshadow::Random<device_t, R> generator((int)rd());
+        generator.SampleUniform(&GET_MAT(matrix), lower, upper);
     };
 };
 
 template<typename R>
 typename weights<R>::initializer_t weights<R>::uniform(R bound) {
-    // return uniform(-bound/2.0, bound/2.0);
+    return uniform(-bound/2.0, bound/2.0);
 }
 
 template<typename R>
@@ -63,7 +60,7 @@ typename weights<R>::initializer_t weights<R>::gaussian(R mean, R std) {
 
 template<typename R>
 typename weights<R>::initializer_t weights<R>::gaussian(R std) {
-    // return gaussian(0.0, std);
+    return gaussian(0.0, std);
 }
 
 template<typename R>

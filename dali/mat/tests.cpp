@@ -11,7 +11,12 @@ using ::testing::AssertionResult;
 using ::testing::AssertionSuccess;
 using ::testing::AssertionFailure;
 
+#ifdef DALI_USE_CUDA
+// most gpus don't support double
+typedef float R;
+#else
 typedef double R;
+#endif
 
 #define NUM_RETRIES 10
 #define EXPERIMENT_REPEAT for(int __repetition=0; __repetition < NUM_RETRIES; ++__repetition)
@@ -142,6 +147,7 @@ typedef MemorySafeTest MatrixTests;
 TEST_F(MatrixTests, addition) {
     auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
     auto B = Mat<R>(10, 20, weights<R>::uniform(2.0));
+
     ASSERT_MATRIX_EQ(A, A)  << "A equals A.";
     ASSERT_MATRIX_NEQ(A, B) << "A different from B.";
 }

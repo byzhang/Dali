@@ -1,4 +1,3 @@
-
 set(EXAMPLES_DIR ${PROJECT_SOURCE_DIR}/examples)
 set(EXAMPLES_BUILD_DIR ${PROJECT_SOURCE_DIR}/build/examples)
 set(EXAMPLE_PROGRAMS api_showcase
@@ -23,6 +22,7 @@ set(EXAMPLE_PROGRAMS api_showcase
                      sparse_paraphrase
                      visualizer
                      )
+
 foreach(program ${EXAMPLE_PROGRAMS})
     add_executable(${program} ${EXAMPLES_DIR}/${program}.cpp)
     target_link_libraries(${program} dali)
@@ -33,18 +33,12 @@ foreach(program ${EXAMPLE_PROGRAMS})
     endif (MKL_FOUND AND BLAS_FOUND)
 endforeach(program)
 
+if (WITH_CUDA)
+    SET(OLD_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+    SET(CMAKE_CXX_FLAGS "-O3 -w -fPIC ${CUDA_EXTRA_FLAGS}")
 
-SET(OLD_CXX_FLAGS ${CMAKE_CXX_FLAGS})
-SET(CMAKE_CXX_FLAGS "-O3 -w -fPIC ${CUDA_EXTRA_FLAGS}")
+    cuda_add_executable(mshadow ${EXAMPLES_DIR}/mshadow.cu)
+    target_link_libraries(mshadow ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES})
 
-cuda_add_executable(mshadow ${EXAMPLES_DIR}/mshadow.cu)
-target_link_libraries(mshadow ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES})
-
-SET(CMAKE_CXX_FLAGS ${OLD_CXX_FLAGS})
-
-
-
-
-# If custom libraries are needed for some targets add them below
-# like this:
-#     target_link_libraries(character_prediction SPECIAL_DEPENDENCY)
+    SET(CMAKE_CXX_FLAGS ${OLD_CXX_FLAGS})
+endif (WITH_CUDA)

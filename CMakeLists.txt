@@ -1,9 +1,7 @@
 cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
 set(CMAKE_LEGACY_CYGWIN_WIN32 0)
 
-project("recurrentjs")
-
-message(${EIGEN3_INCLUDE_DIR})
+project("Dali")
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
@@ -18,9 +16,35 @@ find_package(GooglePerfTools)
 find_package(BLAS)
 find_package(MKL)
 find_package(GTest)
+find_package(CUDA)
 
-# mshadow
-include(${PROJECT_SOURCE_DIR}/MShadowCMakeLists.cmake)
+# CUDA BEGINS HERE
+if (DEFINED WITH_CUDA)
+    message("WITH_CUDA ${WITH_CUDA}")
+else()
+    if (CUDA_FOUND STREQUAL TRUE)
+        SET(WITH_CUDA TRUE)
+    else()
+        SET(WITH_CUDA FALSE)
+        message("CUDA not found - did you know that Dali has GPU support?")
+    endif()
+endif(DEFINED WITH_CUDA)
+
+
+if (WITH_CUDA)
+    add_definitions(-DDALI_USE_CUDA)
+    INCLUDE_DIRECTORIES(${CUDA_INCLUDE_DIR})
+    LIST(APPEND CUDA_NVCC_FLAGS --compiler-options ${CUDA_EXTRA_FLAGS} -lineinfo -Xptxas -dlcm=cg  -use_fast_math -std=c++11)
+    SET(CUDA_EXTRA_FLAGS "-fno-strict-aliasing")
+    SET(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -L/usr/local/cuda/lib")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CUDA_EXTRA_FLAGS}")
+    add_definitions(-DMSHADOW_USE_CUDA=1)
+else (WITH_CUDA)
+    add_definitions(-DMSHADOW_USE_CUDA=0)
+endif (WITH_CUDA)
+# CUDA ENDS HERE
+
+
 
 if (NOT HIREDIS_FOUND)
     message( FATAL_ERROR "ERROR: required dependency HiRedis not found.\n    > brew install hiredis")
@@ -103,6 +127,10 @@ else(CMAKE_BUILD_TYPE MATCHES "debug")
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3 -w -fPIC")
 endif(CMAKE_BUILD_TYPE MATCHES "debug")
 
+# mshadow
+add_definitions(-DMSHADOW_USE_CBLAS)
+add_definitions(-DMSHADOW_USE_MKL=0)
+INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/third_party/mshadow)
 
 # INCLUDES
 include_directories(${MKL_INCLUDE_DIR})
