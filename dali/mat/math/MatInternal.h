@@ -6,8 +6,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include <Eigen/Eigen>
-
+#include <mshadow/tensor.h>
 
 typedef unsigned int dim_t;
 
@@ -16,15 +15,17 @@ class MatInternal {
     private:
         static std::atomic<int> next_matrix;
     public:
-        typedef Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;
-        typedef Eigen::Map<eigen_mat> eigen_mat_view;
+        typedef mshadow::Tensor<mshadow::gpu, 2, R> mat_storage_t;
 
-        eigen_mat w;
+        mat_storage_t w;
+
         std::vector<dim_t> dims;
         const size_t id;
 
         MatInternal(dim_t n, dim_t d, bool empty=false);
         MatInternal(const MatInternal<R>& m);
+
+        ~MatInternal();
 
         R& operator()(int i, int j);
         R operator()(int i, int j) const;
@@ -39,19 +40,21 @@ class MatInternal {
 
         void clear();
 
-        operator eigen_mat();
+        operator mat_storage_t();
 };
 
 template<typename R>
 class GradInternal {
     public:
-        typedef Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;
-        typedef Eigen::Map<eigen_mat> eigen_mat_view;
+        typedef mshadow::Tensor<mshadow::gpu, 2, R> mat_storage_t;
 
-        eigen_mat dw;
+        mat_storage_t dw;
 
         GradInternal(dim_t n, dim_t d, bool empty=true);
         GradInternal(const GradInternal<R>& g);
+
+        ~GradInternal();
+
 
         R& operator()(int i, int j);
         R operator()(int i, int j) const;
@@ -64,7 +67,7 @@ class GradInternal {
 
         void clear();
 
-        operator eigen_mat();
+        operator mat_storage_t();
 };
 
 #endif

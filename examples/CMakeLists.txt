@@ -33,20 +33,12 @@ foreach(program ${EXAMPLE_PROGRAMS})
     endif (MKL_FOUND AND BLAS_FOUND)
 endforeach(program)
 
-# cuda_compile(mshadow_cuda)
-# cuda_add_library(zeugma ${mshadow_cuda})
-# target_link_libraries(zeugma ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} cuda cudart)
-
-# add_executable(hello_word ${UniSources})
-# target_link_libraries(hello_word zeugma)
 
 SET(OLD_CXX_FLAGS ${CMAKE_CXX_FLAGS})
 SET(CMAKE_CXX_FLAGS "-O3 -w -fPIC ${CUDA_EXTRA_FLAGS}")
-set(CMAKE_LEGACY_CYGWIN_WIN32 0)
 
-cuda_compile(mycuda ${EXAMPLES_DIR}/mshadow.cu)
-cuda_add_executable(mycuda ${EXAMPLES_DIR}/mshadow.cu)
-target_link_libraries(mycuda ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} cuda cudart)
+cuda_add_executable(mshadow ${EXAMPLES_DIR}/mshadow.cu)
+target_link_libraries(mshadow ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES})
 
 SET(CMAKE_CXX_FLAGS ${OLD_CXX_FLAGS})
 

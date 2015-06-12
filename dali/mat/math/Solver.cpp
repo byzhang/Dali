@@ -46,29 +46,29 @@ namespace Solver {
 
     template<typename R>
     void SGD<R>::step (vector<Mat<R>>& parameters, R step_size) {
-        for (auto& param : parameters) {
-            DEBUG_ASSERT_NOT_NAN(GET_MAT(param));
-            if (param.sparse) {
-                for (auto& i : *(param.sparse_row_keys)) {
-                    if (this->regc > 0) {
-                        GET_MAT(param).row(i) -= (step_size * GET_GRAD(param).row(i).array().min(this->clipval).max(-this->clipval)).matrix() - (this->regc * GET_MAT(param).row(i));
-                    } else {
-                        GET_MAT(param).row(i) -= (step_size * GET_GRAD(param).row(i).array().min(this->clipval).max(-this->clipval)).matrix();
-                    }
-                    // reset gradient
-                    GET_GRAD(param).row(i).fill(0);
-                }
-            } else {
-                if (this->regc > 0) {
-                    GET_MAT(param) -= (step_size * GET_GRAD(param).array().min(this->clipval).max(-this->clipval)).matrix() - (this->regc * GET_MAT(param));
-                } else {
-                    GET_MAT(param) -= (step_size * GET_GRAD(param).array().min(this->clipval).max(-this->clipval)).matrix();
-                }
-                // reset gradient
-                GET_GRAD(param).fill(0);
-            }
-            DEBUG_ASSERT_NOT_NAN(GET_MAT(param));
-        }
+        // for (auto& param : parameters) {
+        //     DEBUG_ASSERT_NOT_NAN(GET_MAT(param));
+        //     if (param.sparse) {
+        //         for (auto& i : *(param.sparse_row_keys)) {
+        //             if (this->regc > 0) {
+        //                 GET_MAT(param).row(i) -= (step_size * GET_GRAD(param).row(i).array().min(this->clipval).max(-this->clipval)).matrix() - (this->regc * GET_MAT(param).row(i));
+        //             } else {
+        //                 GET_MAT(param).row(i) -= (step_size * GET_GRAD(param).row(i).array().min(this->clipval).max(-this->clipval)).matrix();
+        //             }
+        //             // reset gradient
+        //             GET_GRAD(param).row(i).fill(0);
+        //         }
+        //     } else {
+        //         if (this->regc > 0) {
+        //             GET_MAT(param) -= (step_size * GET_GRAD(param).array().min(this->clipval).max(-this->clipval)).matrix() - (this->regc * GET_MAT(param));
+        //         } else {
+        //             GET_MAT(param) -= (step_size * GET_GRAD(param).array().min(this->clipval).max(-this->clipval)).matrix();
+        //         }
+        //         // reset gradient
+        //         GET_GRAD(param).fill(0);
+        //     }
+        //     DEBUG_ASSERT_NOT_NAN(GET_MAT(param));
+        // }
     }
 
     template<typename R>
@@ -99,71 +99,71 @@ namespace Solver {
 
     template<typename R>
     void AdaGrad<R>::create_gradient_caches(
-        vector<Mat<R>>& parameters) {
-        for (auto& param : parameters) {
-            // this operation should be run once unless
-            // we expect the parameters of the model
-            // to change online (probably not the case)
+            vector<Mat<R>>& parameters) {
+        // for (auto& param : parameters) {
+        //     // this operation should be run once unless
+        //     // we expect the parameters of the model
+        //     // to change online (probably not the case)
 
-            if (gsums.count(PARAM_KEY_FOR_LOOKUP_TABLE) == 0) {
-                auto new_cache = gsums.emplace(
-                    std::piecewise_construct,
-                std::forward_as_tuple(PARAM_KEY_FOR_LOOKUP_TABLE),
-                std::forward_as_tuple(param.dims(0), param.dims(1)));
-                // initialize values for step cache to zero:
-                new_cache.first->second.fill(0);
-            }
+        //     if (gsums.count(PARAM_KEY_FOR_LOOKUP_TABLE) == 0) {
+        //         auto new_cache = gsums.emplace(
+        //             std::piecewise_construct,
+        //         std::forward_as_tuple(PARAM_KEY_FOR_LOOKUP_TABLE),
+        //         std::forward_as_tuple(param.dims(0), param.dims(1)));
+        //         // initialize values for step cache to zero:
+        //         new_cache.first->second.fill(0);
+        //     }
 
-        }
+        // }
     }
 
     template<typename R>
     void AdaGrad<R>::reset_caches(
-        vector<Mat<R>>& parameters) {
-        for (auto& param : parameters) {
-            auto& s = gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
-            s.fill(0);
-        }
+            vector<Mat<R>>& parameters) {
+        // for (auto& param : parameters) {
+        //     auto& s = gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
+        //     s.fill(0);
+        // }
     }
 
     template<typename R>
     void AdaGrad<R>::step(
-        vector<Mat<R>>& parameters, R step_size) {
-        for (auto& param : parameters) {
-            auto& s = gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
-            if (param.sparse) {
-                for (auto& i : *(param.sparse_row_keys)) {
-                if (this->regc > 0) {
-                    GET_GRAD(param).row(i) = GET_GRAD(param).row(i).array().min(this->clipval).max(-this->clipval).matrix() + (this->regc * GET_MAT(param).row(i));
-                } else {
-                    GET_GRAD(param).row(i) = GET_GRAD(param).row(i).array().min(this->clipval).max(-this->clipval).matrix();
-                }
-                // update gradient cache using decay rule:
-                s.row(i) += GET_GRAD(param).row(i).array().square().matrix();
-                // clip the gradient to prevent explosions:
-                // update gradient using RMSprop rule
-                DEBUG_ASSERT_POSITIVE((s.row(i).array() + this->smooth_eps).matrix());
-                GET_MAT(param).row(i) -= step_size * (GET_GRAD(param).row(i).array() / (s.row(i).array() + this->smooth_eps).sqrt() ).matrix();
-                // reset gradient
-                GET_GRAD(param).row(i).fill(0);
-                }
-            } else {
-                if (this->regc > 0) {
-                    GET_GRAD(param) = GET_GRAD(param).array().min(this->clipval).max(-this->clipval).matrix() + (this->regc * GET_MAT(param));
-                } else {
-                    GET_GRAD(param) = GET_GRAD(param).array().min(this->clipval).max(-this->clipval).matrix();
-                }
-                // update gradient cache using decay rule:
-                s += GET_GRAD(param).array().square().matrix();
-                // clip the gradient to prevent explosions:
-                // update gradient using RMSprop rule
-                DEBUG_ASSERT_POSITIVE((s.array() + this->smooth_eps).matrix());
-                GET_MAT(param) -= step_size * (GET_GRAD(param).array() / (s.array() + this->smooth_eps).sqrt() ).matrix();
-                // reset gradient
-                GET_GRAD(param).fill(0);
-            }
-            DEBUG_ASSERT_NOT_NAN(GET_MAT(param));
-        }
+            vector<Mat<R>>& parameters, R step_size) {
+        // for (auto& param : parameters) {
+        //     auto& s = gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
+        //     if (param.sparse) {
+        //         for (auto& i : *(param.sparse_row_keys)) {
+        //         if (this->regc > 0) {
+        //             GET_GRAD(param).row(i) = GET_GRAD(param).row(i).array().min(this->clipval).max(-this->clipval).matrix() + (this->regc * GET_MAT(param).row(i));
+        //         } else {
+        //             GET_GRAD(param).row(i) = GET_GRAD(param).row(i).array().min(this->clipval).max(-this->clipval).matrix();
+        //         }
+        //         // update gradient cache using decay rule:
+        //         s.row(i) += GET_GRAD(param).row(i).array().square().matrix();
+        //         // clip the gradient to prevent explosions:
+        //         // update gradient using RMSprop rule
+        //         DEBUG_ASSERT_POSITIVE((s.row(i).array() + this->smooth_eps).matrix());
+        //         GET_MAT(param).row(i) -= step_size * (GET_GRAD(param).row(i).array() / (s.row(i).array() + this->smooth_eps).sqrt() ).matrix();
+        //         // reset gradient
+        //         GET_GRAD(param).row(i).fill(0);
+        //         }
+        //     } else {
+        //         if (this->regc > 0) {
+        //             GET_GRAD(param) = GET_GRAD(param).array().min(this->clipval).max(-this->clipval).matrix() + (this->regc * GET_MAT(param));
+        //         } else {
+        //             GET_GRAD(param) = GET_GRAD(param).array().min(this->clipval).max(-this->clipval).matrix();
+        //         }
+        //         // update gradient cache using decay rule:
+        //         s += GET_GRAD(param).array().square().matrix();
+        //         // clip the gradient to prevent explosions:
+        //         // update gradient using RMSprop rule
+        //         DEBUG_ASSERT_POSITIVE((s.array() + this->smooth_eps).matrix());
+        //         GET_MAT(param) -= step_size * (GET_GRAD(param).array() / (s.array() + this->smooth_eps).sqrt() ).matrix();
+        //         // reset gradient
+        //         GET_GRAD(param).fill(0);
+        //     }
+        //     DEBUG_ASSERT_NOT_NAN(GET_MAT(param));
+        // }
     }
 
     template<typename R>
@@ -195,43 +195,43 @@ namespace Solver {
 
     template<typename R>
     void RMSProp<R>::step(
-        vector<Mat<R>>& parameters,
-        R step_size
-        ) {
-        for (auto& param : parameters) {
-            auto& s = this->gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
+            vector<Mat<R>>& parameters,
+            R step_size
+            ) {
+        // for (auto& param : parameters) {
+        //     auto& s = this->gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
 
-            if (param.sparse) {
-                for (auto& i : *(param.sparse_row_keys)) {
-                    s.row(i) = s.row(i) * decay_rate + (1.0 - decay_rate) * GET_GRAD(param).row(i).array().square().matrix();
-                    // clip the gradient to prevent explosions:
-                    if (this->regc > 0) {
-                        GET_GRAD(param).row(i) = GET_GRAD(param).row(i).array().min(this->clipval).max(-this->clipval).matrix() + (this->regc * GET_MAT(param).row(i));
-                    } else {
-                        GET_GRAD(param).row(i) = GET_GRAD(param).row(i).array().min(this->clipval).max(-this->clipval).matrix();
-                    }
-                    // update gradient using RMSprop rule
-                    DEBUG_ASSERT_POSITIVE((s.row(i).array() + this->smooth_eps).matrix());
-                    GET_MAT(param).row(i) -= step_size * (GET_GRAD(param).row(i).array() / (s.row(i).array() + this->smooth_eps).sqrt() ).matrix()  - (this->regc * GET_MAT(param).row(i));
-                    // reset gradient
-                    GET_GRAD(param).row(i).fill(0);
-                }
-            } else {
-                s = s * decay_rate + (1.0 - decay_rate) * GET_GRAD(param).array().square().matrix();
-                // clip the gradient to prevent explosions:
-                if (this->regc > 0) {
-                    GET_GRAD(param) = GET_GRAD(param).array().min(this->clipval).max(-this->clipval).matrix() + (this->regc * GET_MAT(param));
-                } else {
-                    GET_GRAD(param) = GET_GRAD(param).array().min(this->clipval).max(-this->clipval).matrix();
-                }
-                // update gradient using RMSprop rule
-                DEBUG_ASSERT_POSITIVE((s.array() + this->smooth_eps).matrix());
-                GET_MAT(param) -= step_size * (GET_GRAD(param).array() / (s.array() + this->smooth_eps).sqrt() ).matrix()  - (this->regc * GET_MAT(param));
-                // reset gradient
-                GET_GRAD(param).fill(0);
-            }
-            DEBUG_ASSERT_NOT_NAN(GET_MAT(param));
-        }
+        //     if (param.sparse) {
+        //         for (auto& i : *(param.sparse_row_keys)) {
+        //             s.row(i) = s.row(i) * decay_rate + (1.0 - decay_rate) * GET_GRAD(param).row(i).array().square().matrix();
+        //             // clip the gradient to prevent explosions:
+        //             if (this->regc > 0) {
+        //                 GET_GRAD(param).row(i) = GET_GRAD(param).row(i).array().min(this->clipval).max(-this->clipval).matrix() + (this->regc * GET_MAT(param).row(i));
+        //             } else {
+        //                 GET_GRAD(param).row(i) = GET_GRAD(param).row(i).array().min(this->clipval).max(-this->clipval).matrix();
+        //             }
+        //             // update gradient using RMSprop rule
+        //             DEBUG_ASSERT_POSITIVE((s.row(i).array() + this->smooth_eps).matrix());
+        //             GET_MAT(param).row(i) -= step_size * (GET_GRAD(param).row(i).array() / (s.row(i).array() + this->smooth_eps).sqrt() ).matrix()  - (this->regc * GET_MAT(param).row(i));
+        //             // reset gradient
+        //             GET_GRAD(param).row(i).fill(0);
+        //         }
+        //     } else {
+        //         s = s * decay_rate + (1.0 - decay_rate) * GET_GRAD(param).array().square().matrix();
+        //         // clip the gradient to prevent explosions:
+        //         if (this->regc > 0) {
+        //             GET_GRAD(param) = GET_GRAD(param).array().min(this->clipval).max(-this->clipval).matrix() + (this->regc * GET_MAT(param));
+        //         } else {
+        //             GET_GRAD(param) = GET_GRAD(param).array().min(this->clipval).max(-this->clipval).matrix();
+        //         }
+        //         // update gradient using RMSprop rule
+        //         DEBUG_ASSERT_POSITIVE((s.array() + this->smooth_eps).matrix());
+        //         GET_MAT(param) -= step_size * (GET_GRAD(param).array() / (s.array() + this->smooth_eps).sqrt() ).matrix()  - (this->regc * GET_MAT(param));
+        //         // reset gradient
+        //         GET_GRAD(param).fill(0);
+        //     }
+        //     DEBUG_ASSERT_NOT_NAN(GET_MAT(param));
+        // }
     }
 
     template<typename R>
@@ -265,87 +265,87 @@ namespace Solver {
 
     template<typename R>
     void AdaDelta<R>::create_gradient_caches(
-        vector<Mat<R>>& parameters) {
-        for (auto& param : parameters) {
-            // this operation should be run once unless
-            // we expect the parameters of the model
-            // to change online (probably not the case)
-            if (!(gsums.count(PARAM_KEY_FOR_LOOKUP_TABLE) > 0)) {
-                auto new_cache = gsums.emplace(
-                    std::piecewise_construct,
-                std::forward_as_tuple(PARAM_KEY_FOR_LOOKUP_TABLE),
-                std::forward_as_tuple(param.dims(0), param.dims(1)));
-                // initialize values for step cache to zero:
-                new_cache.first->second.fill(0);
+            vector<Mat<R>>& parameters) {
+        // for (auto& param : parameters) {
+        //     // this operation should be run once unless
+        //     // we expect the parameters of the model
+        //     // to change online (probably not the case)
+        //     if (!(gsums.count(PARAM_KEY_FOR_LOOKUP_TABLE) > 0)) {
+        //         auto new_cache = gsums.emplace(
+        //             std::piecewise_construct,
+        //         std::forward_as_tuple(PARAM_KEY_FOR_LOOKUP_TABLE),
+        //         std::forward_as_tuple(param.dims(0), param.dims(1)));
+        //         // initialize values for step cache to zero:
+        //         new_cache.first->second.fill(0);
 
-                new_cache = xsums.emplace(
-                    std::piecewise_construct,
-                std::forward_as_tuple(PARAM_KEY_FOR_LOOKUP_TABLE),
-                std::forward_as_tuple(param.dims(0), param.dims(1)));
-                // initialize values for step cache to zero:
-                new_cache.first->second.fill(0);
-            }
-        }
+        //         new_cache = xsums.emplace(
+        //             std::piecewise_construct,
+        //         std::forward_as_tuple(PARAM_KEY_FOR_LOOKUP_TABLE),
+        //         std::forward_as_tuple(param.dims(0), param.dims(1)));
+        //         // initialize values for step cache to zero:
+        //         new_cache.first->second.fill(0);
+        //     }
+        // }
     }
 
     template<typename R>
     void AdaDelta<R>::reset_caches(
-        vector<Mat<R>>& parameters) {
-        for (auto& param : parameters) {
-            auto& s = gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
-            s.fill(0);
-            auto& x = xsums[PARAM_KEY_FOR_LOOKUP_TABLE];
-            x.fill(0);
-        }
+            vector<Mat<R>>& parameters) {
+        // for (auto& param : parameters) {
+        //     auto& s = gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
+        //     s.fill(0);
+        //     auto& x = xsums[PARAM_KEY_FOR_LOOKUP_TABLE];
+        //     x.fill(0);
+        // }
     }
 
     template<typename R>
     void AdaDelta<R>::step (vector<Mat<R>>& parameters) {
-        for (auto& param : parameters) {
-            auto& gsum = gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
-            auto& xsum = xsums[PARAM_KEY_FOR_LOOKUP_TABLE];
-            if (param.sparse) {
-                for (auto& i : *(param.sparse_row_keys)) {
-                    if (this->regc > 0) {
-                        GET_GRAD(param).row(i) = GET_GRAD(param).row(i).array().min(this->clipval).max(-this->clipval).matrix() + (this->regc * GET_MAT(param).row(i));
-                    } else {
-                        GET_GRAD(param).row(i) = GET_GRAD(param).row(i).array().min(this->clipval).max(-this->clipval).matrix();
-                    }
-                    // update gradient cache using decay rule:
-                    DEBUG_ASSERT_POSITIVE(gsum.row(i).matrix());
-                    gsum.row(i) = (gsum.row(i) * rho) + ((1.0 - rho) * (GET_GRAD(param).row(i).array().square()).matrix());
+        // for (auto& param : parameters) {
+        //     auto& gsum = gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
+        //     auto& xsum = xsums[PARAM_KEY_FOR_LOOKUP_TABLE];
+        //     if (param.sparse) {
+        //         for (auto& i : *(param.sparse_row_keys)) {
+        //             if (this->regc > 0) {
+        //                 GET_GRAD(param).row(i) = GET_GRAD(param).row(i).array().min(this->clipval).max(-this->clipval).matrix() + (this->regc * GET_MAT(param).row(i));
+        //             } else {
+        //                 GET_GRAD(param).row(i) = GET_GRAD(param).row(i).array().min(this->clipval).max(-this->clipval).matrix();
+        //             }
+        //             // update gradient cache using decay rule:
+        //             DEBUG_ASSERT_POSITIVE(gsum.row(i).matrix());
+        //             gsum.row(i) = (gsum.row(i) * rho) + ((1.0 - rho) * (GET_GRAD(param).row(i).array().square()).matrix());
 
-                    DEBUG_ASSERT_NOT_NAN(((gsum.row(i).array()  + this->smooth_eps).matrix()));
-                    DEBUG_ASSERT_POSITIVE(((gsum.row(i).array() + this->smooth_eps)).matrix());
-                    DEBUG_ASSERT_POSITIVE(((xsum.row(i).array() + this->smooth_eps) / (gsum.row(i).array() + this->smooth_eps)).matrix());
-                    auto dparam = -(((xsum.row(i).array() + this->smooth_eps) / (gsum.row(i).array() + this->smooth_eps)).sqrt() * GET_GRAD(param).row(i).array()).matrix();
+        //             DEBUG_ASSERT_NOT_NAN(((gsum.row(i).array()  + this->smooth_eps).matrix()));
+        //             DEBUG_ASSERT_POSITIVE(((gsum.row(i).array() + this->smooth_eps)).matrix());
+        //             DEBUG_ASSERT_POSITIVE(((xsum.row(i).array() + this->smooth_eps) / (gsum.row(i).array() + this->smooth_eps)).matrix());
+        //             auto dparam = -(((xsum.row(i).array() + this->smooth_eps) / (gsum.row(i).array() + this->smooth_eps)).sqrt() * GET_GRAD(param).row(i).array()).matrix();
 
-                    xsum.row(i) = (xsum.row(i) * rho) + ((1.0 - rho) * (dparam.array().square())).matrix();
-                    // update gradient using AdaDelta rule
-                    GET_MAT(param).row(i) += dparam;
-                    // reset gradient
-                    GET_GRAD(param).row(i).fill(0);
-                }
-            } else {
-                if (this->regc > 0) {
-                    GET_GRAD(param) = GET_GRAD(param).array().min(this->clipval).max(-this->clipval).matrix() + (this->regc * GET_MAT(param));
-                } else {
-                    GET_GRAD(param) = GET_GRAD(param).array().min(this->clipval).max(-this->clipval).matrix();
-                }
-                // update gradient cache using decay rule:
-                gsum = (gsum * rho) + ((1.0 - rho) * (GET_GRAD(param).array().square()).matrix());
-                DEBUG_ASSERT_POSITIVE((gsum.array()  + this->smooth_eps).matrix());
-                DEBUG_ASSERT_POSITIVE(((xsum.array() + this->smooth_eps) / (gsum.array() + this->smooth_eps)).matrix());
-                auto dparam = -(((xsum.array() + this->smooth_eps) / (gsum.array() + this->smooth_eps)).sqrt() * GET_GRAD(param).array()).matrix();
+        //             xsum.row(i) = (xsum.row(i) * rho) + ((1.0 - rho) * (dparam.array().square())).matrix();
+        //             // update gradient using AdaDelta rule
+        //             GET_MAT(param).row(i) += dparam;
+        //             // reset gradient
+        //             GET_GRAD(param).row(i).fill(0);
+        //         }
+        //     } else {
+        //         if (this->regc > 0) {
+        //             GET_GRAD(param) = GET_GRAD(param).array().min(this->clipval).max(-this->clipval).matrix() + (this->regc * GET_MAT(param));
+        //         } else {
+        //             GET_GRAD(param) = GET_GRAD(param).array().min(this->clipval).max(-this->clipval).matrix();
+        //         }
+        //         // update gradient cache using decay rule:
+        //         gsum = (gsum * rho) + ((1.0 - rho) * (GET_GRAD(param).array().square()).matrix());
+        //         DEBUG_ASSERT_POSITIVE((gsum.array()  + this->smooth_eps).matrix());
+        //         DEBUG_ASSERT_POSITIVE(((xsum.array() + this->smooth_eps) / (gsum.array() + this->smooth_eps)).matrix());
+        //         auto dparam = -(((xsum.array() + this->smooth_eps) / (gsum.array() + this->smooth_eps)).sqrt() * GET_GRAD(param).array()).matrix();
 
-                xsum = (xsum * rho) + ((1.0 - rho) * (dparam.array().square())).matrix();
-                // update gradient using AdaDelta rule
-                GET_MAT(param) += dparam;
-                // reset gradient
-                GET_GRAD(param).fill(0);
-            }
-            DEBUG_ASSERT_NOT_NAN(GET_MAT(param));
-        }
+        //         xsum = (xsum * rho) + ((1.0 - rho) * (dparam.array().square())).matrix();
+        //         // update gradient using AdaDelta rule
+        //         GET_MAT(param) += dparam;
+        //         // reset gradient
+        //         GET_GRAD(param).fill(0);
+        //     }
+        //     DEBUG_ASSERT_NOT_NAN(GET_MAT(param));
+        // }
     }
 
     template class AdaDelta<float>;
@@ -375,102 +375,102 @@ namespace Solver {
 
     template<typename R>
     void Adam<R>::create_gradient_caches(
-        vector<Mat<R>>& parameters) {
-        for (auto& param : parameters) {
-            // this operation should be run once unless
-            // we expect the parameters of the model
-            // to change online (probably not the case)
-            if (!(gsums.count(PARAM_KEY_FOR_LOOKUP_TABLE) > 0)) {
-                auto new_cache = gsums.emplace(
-                    std::piecewise_construct,
-                std::forward_as_tuple(PARAM_KEY_FOR_LOOKUP_TABLE),
-                std::forward_as_tuple(param.dims(0), param.dims(1)));
-                // initialize values for step cache to zero:
-                new_cache.first->second.fill(0);
+            vector<Mat<R>>& parameters) {
+        // for (auto& param : parameters) {
+        //     // this operation should be run once unless
+        //     // we expect the parameters of the model
+        //     // to change online (probably not the case)
+        //     if (!(gsums.count(PARAM_KEY_FOR_LOOKUP_TABLE) > 0)) {
+        //         auto new_cache = gsums.emplace(
+        //             std::piecewise_construct,
+        //         std::forward_as_tuple(PARAM_KEY_FOR_LOOKUP_TABLE),
+        //         std::forward_as_tuple(param.dims(0), param.dims(1)));
+        //         // initialize values for step cache to zero:
+        //         new_cache.first->second.fill(0);
 
-                new_cache = xsums.emplace(
-                    std::piecewise_construct,
-                std::forward_as_tuple(PARAM_KEY_FOR_LOOKUP_TABLE),
-                std::forward_as_tuple(param.dims(0), param.dims(1)));
-                // initialize values for step cache to zero:
-                new_cache.first->second.fill(0);
-            }
-        }
+        //         new_cache = xsums.emplace(
+        //             std::piecewise_construct,
+        //         std::forward_as_tuple(PARAM_KEY_FOR_LOOKUP_TABLE),
+        //         std::forward_as_tuple(param.dims(0), param.dims(1)));
+        //         // initialize values for step cache to zero:
+        //         new_cache.first->second.fill(0);
+        //     }
+        // }
     }
 
     template<typename R>
     void Adam<R>::reset_caches(
-        vector<Mat<R>>& parameters) {
-        for (auto& param : parameters) {
-            auto& s = gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
-            s.fill(0);
-            auto& x = xsums[PARAM_KEY_FOR_LOOKUP_TABLE];
-            x.fill(0);
-        }
-        epoch = 0;
+            vector<Mat<R>>& parameters) {
+        // for (auto& param : parameters) {
+        //     auto& s = gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
+        //     s.fill(0);
+        //     auto& x = xsums[PARAM_KEY_FOR_LOOKUP_TABLE];
+        //     x.fill(0);
+        // }
+        // epoch = 0;
     }
 
     template<typename R>
     void Adam<R>::step (vector<Mat<R>>& parameters, R step_size) {
-        // increase timesteps:
-        epoch+=1;
-        // this affects the learning rate:
-        auto fix1 = 1.0 - std::pow(b1, epoch);
-        auto fix2 = 1.0 - std::pow(b2, epoch);
-        auto lr_t = step_size * sqrt(fix2 / fix1);
+        // // increase timesteps:
+        // epoch+=1;
+        // // this affects the learning rate:
+        // auto fix1 = 1.0 - std::pow(b1, epoch);
+        // auto fix2 = 1.0 - std::pow(b2, epoch);
+        // auto lr_t = step_size * sqrt(fix2 / fix1);
 
-        assert(lr_t == lr_t);
+        // assert(lr_t == lr_t);
 
-        for (auto& param : parameters) {
-            auto& m = gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
-            auto& v = xsums[PARAM_KEY_FOR_LOOKUP_TABLE];
+        // for (auto& param : parameters) {
+        //     auto& m = gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
+        //     auto& v = xsums[PARAM_KEY_FOR_LOOKUP_TABLE];
 
-            if (param.sparse) {
-                for (auto& i : *(param.sparse_row_keys)) {
-                    GET_GRAD(param).row(i) = GET_GRAD(param).row(i).array().min(this->clipval).max(-this->clipval).matrix();
-                    // update m acculumulator
-                    m.row(i) = ((b1 * GET_GRAD(param).row(i).array()) + ((1. - b1) * m.row(i).array())).matrix();
+        //     if (param.sparse) {
+        //         for (auto& i : *(param.sparse_row_keys)) {
+        //             GET_GRAD(param).row(i) = GET_GRAD(param).row(i).array().min(this->clipval).max(-this->clipval).matrix();
+        //             // update m acculumulator
+        //             m.row(i) = ((b1 * GET_GRAD(param).row(i).array()) + ((1. - b1) * m.row(i).array())).matrix();
 
-                    // update v acculumulator
-                    v.row(i) = ((b2 * GET_GRAD(param).row(i).array().square()) + ((1. - b2) * v.row(i).array())).matrix();
+        //             // update v acculumulator
+        //             v.row(i) = ((b2 * GET_GRAD(param).row(i).array().square()) + ((1. - b2) * v.row(i).array())).matrix();
 
-                    // regularize using L2 norm:
-                    if (this->regc > 0) {
-                        GET_GRAD(param).row(i)  = (m.row(i).array() / (v.row(i).array().sqrt() + this->smooth_eps)).matrix() + (this->regc * GET_MAT(param).row(i));
-                    } else {
-                        GET_GRAD(param).row(i)  = (m.row(i).array() / (v.row(i).array().sqrt() + this->smooth_eps)).matrix();
-                    }
+        //             // regularize using L2 norm:
+        //             if (this->regc > 0) {
+        //                 GET_GRAD(param).row(i)  = (m.row(i).array() / (v.row(i).array().sqrt() + this->smooth_eps)).matrix() + (this->regc * GET_MAT(param).row(i));
+        //             } else {
+        //                 GET_GRAD(param).row(i)  = (m.row(i).array() / (v.row(i).array().sqrt() + this->smooth_eps)).matrix();
+        //             }
 
-                    // take gradient step
-                    GET_MAT(param).row(i) -= lr_t * GET_GRAD(param).row(i);
+        //             // take gradient step
+        //             GET_MAT(param).row(i) -= lr_t * GET_GRAD(param).row(i);
 
-                    // reset gradient
-                    GET_GRAD(param).row(i).fill(0);
-                }
-            } else {
+        //             // reset gradient
+        //             GET_GRAD(param).row(i).fill(0);
+        //         }
+        //     } else {
 
-                GET_GRAD(param) = GET_GRAD(param).array().min(this->clipval).max(-this->clipval).matrix();
+        //         GET_GRAD(param) = GET_GRAD(param).array().min(this->clipval).max(-this->clipval).matrix();
 
-                // update m acculumulator
-                m = ((b1 * GET_GRAD(param).array()) + ((1. - b1) * m.array())).matrix();
+        //         // update m acculumulator
+        //         m = ((b1 * GET_GRAD(param).array()) + ((1. - b1) * m.array())).matrix();
 
-                // update v acculumulator
-                v = ((b2 * GET_GRAD(param).array().square()) + ((1. - b2) * v.array())).matrix();
+        //         // update v acculumulator
+        //         v = ((b2 * GET_GRAD(param).array().square()) + ((1. - b2) * v.array())).matrix();
 
-                // regularize using L2 norm:
-                if (this->regc > 0) {
-                    GET_GRAD(param)  = (m.array() / (v.array().sqrt() + this->smooth_eps)).matrix() + (this->regc * GET_MAT(param));
-                } else {
-                    GET_GRAD(param)  = (m.array() / (v.array().sqrt() + this->smooth_eps)).matrix();
-                }
+        //         // regularize using L2 norm:
+        //         if (this->regc > 0) {
+        //             GET_GRAD(param)  = (m.array() / (v.array().sqrt() + this->smooth_eps)).matrix() + (this->regc * GET_MAT(param));
+        //         } else {
+        //             GET_GRAD(param)  = (m.array() / (v.array().sqrt() + this->smooth_eps)).matrix();
+        //         }
 
-                // take gradient step
-                GET_MAT(param) -= lr_t * GET_GRAD(param);
+        //         // take gradient step
+        //         GET_MAT(param) -= lr_t * GET_GRAD(param);
 
-                // reset gradient
-                GET_GRAD(param).fill(0);
-            }
-        }
+        //         // reset gradient
+        //         GET_GRAD(param).fill(0);
+        //     }
+        // }
     }
 
 

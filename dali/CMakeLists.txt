@@ -3,6 +3,16 @@ set(DaliDir "${PROJECT_SOURCE_DIR}/dali")
 file(GLOB_RECURSE DaliHeaders "${DaliDir}/*.h")
 file(GLOB_RECURSE DaliSources "${DaliDir}/*.cpp")
 file(GLOB_RECURSE DaliTemplates "${DaliDir}/*.cpp.template")
+file(GLOB_RECURSE DaliCudaSources "${DaliDir}/*.cu")
+
+SET(OLD_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+SET(CMAKE_CXX_FLAGS "-O3 -w -fPIC ${CUDA_EXTRA_FLAGS}")
+
+cuda_add_library(dali_cuda ${DaliCudaSources})
+target_link_libraries(dali_cuda ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES})
+
+SET(CMAKE_CXX_FLAGS ${OLD_CXX_FLAGS})
+
 
 # Remove tests from compilation
 file(GLOB_RECURSE DaliTests "${DaliDir}/tests.cpp")
@@ -34,6 +44,7 @@ if (BLAS_FOUND AND MKL_FOUND)
 endif (BLAS_FOUND AND MKL_FOUND)
 
 target_link_libraries(dali ${ZLIB_LIBRARIES}
+                           dali_cuda
                            proto
                            SQLiteCpp
                            redox_static

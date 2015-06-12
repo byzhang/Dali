@@ -1,624 +1,625 @@
+
 #include "CrossEntropy.h"
 
 #include "dali/mat/math/__MatMacros__.h"
 
 template<typename Z, typename M>
 Z masked_cross_entropy(Mat<Z> logprobs,
-    uint& T,
-    shared_eigen_index_vector loss_start,
-    shared_eigen_index_vector codelens,
-    const M targets) {
-    Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
-    Z cost = 0.0;
-    // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < targets.rows(); i++) {
-        if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + (*codelens)(i) )) {
-            cost -= std::log(GET_MAT(probs)(targets(i),i));
-            GET_GRAD(logprobs).col(i) = GET_MAT(probs).col(i);
-            GET_GRAD(logprobs)(targets(i), i) -= 1;
+        uint& T,
+        shared_eigen_index_vector loss_start,
+        shared_eigen_index_vector codelens,
+        const M targets) {
+    // Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
+    // Z cost = 0.0;
+    // // get cost for each pair of target and datastream:
+    // for (size_t i = 0; i < targets.rows(); i++) {
+    //     if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + (*codelens)(i) )) {
+    //         cost -= std::log(GET_MAT(probs)(targets(i),i));
+    //         GET_GRAD(logprobs).col(i) = GET_MAT(probs).col(i);
+    //         GET_GRAD(logprobs)(targets(i), i) -= 1;
 
-            #ifdef VERBOSE_CROSS_ENTROPY
+    //         #ifdef VERBOSE_CROSS_ENTROPY
 
-            std::cout << "-- (" << T << ")\n";
-            for (int k = 0 ; k < GET_GRAD(logprobs).rows(); k++) {
-                for (int j = 0; j < GET_GRAD(logprobs).cols(); j++) {
-                    if (k == targets(i) && i == j) {
-                        std::cout << " **" << std::fixed
-                                  << std::setw( 5 ) // keep 7 digits
-                                  << std::setprecision( 3 ) // use 3 decimals
-                                  << std::setfill( ' ' ) // pad values with blanks this.w()(i,j)
-                                  << GET_GRAD(logprobs)(k,j) << "** ";
-                    } else {
-                        std::cout << "   " << std::fixed
-                                  << std::setw( 5 ) // keep 7 digits
-                                  << std::setprecision( 3 ) // use 3 decimals
-                                  << std::setfill( ' ' ) // pad values with blanks this.w()(i,j)
-                                  << GET_GRAD(logprobs)(k,j) << "   ";
-                    }
-                }
-                std::cout << "\n";
-            }
-            std::cout << std::endl << "--" << std::endl;
+    //         std::cout << "-- (" << T << ")\n";
+    //         for (int k = 0 ; k < GET_GRAD(logprobs).rows(); k++) {
+    //             for (int j = 0; j < GET_GRAD(logprobs).cols(); j++) {
+    //                 if (k == targets(i) && i == j) {
+    //                     std::cout << " **" << std::fixed
+    //                               << std::setw( 5 ) // keep 7 digits
+    //                               << std::setprecision( 3 ) // use 3 decimals
+    //                               << std::setfill( ' ' ) // pad values with blanks this.w()(i,j)
+    //                               << GET_GRAD(logprobs)(k,j) << "** ";
+    //                 } else {
+    //                     std::cout << "   " << std::fixed
+    //                               << std::setw( 5 ) // keep 7 digits
+    //                               << std::setprecision( 3 ) // use 3 decimals
+    //                               << std::setfill( ' ' ) // pad values with blanks this.w()(i,j)
+    //                               << GET_GRAD(logprobs)(k,j) << "   ";
+    //                 }
+    //             }
+    //             std::cout << "\n";
+    //         }
+    //         std::cout << std::endl << "--" << std::endl;
 
-            #endif
-        }
-    }
-    DEBUG_ASSERT_NOT_NAN(GET_GRAD(logprobs));
-    return cost;
-}
-
-template<typename Z, typename M>
-Z masked_cross_entropy(Mat<Z> logprobs,
-    uint& T,
-    uint loss_start,
-    shared_eigen_index_vector codelens,
-    const M targets) {
-    Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
-    Z cost = 0.0;
-    // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < targets.rows(); i++) {
-        if (T >= loss_start && (T < loss_start + (*codelens)(i) )) {
-            cost -= std::log(GET_MAT(probs)(targets(i),i));
-            GET_GRAD(logprobs).col(i) = GET_MAT(probs).col(i);
-            GET_GRAD(logprobs)(targets(i), i) -= 1;
-        }
-    }
-    DEBUG_ASSERT_NOT_NAN(GET_GRAD(logprobs));
-    return cost;
-}
-template<typename Z, typename M>
-Z masked_cross_entropy(Mat<Z> logprobs,
-    uint& T,
-    int loss_start,
-    shared_eigen_index_vector codelens,
-    const M targets) {
-    Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
-    Z cost = 0.0;
-    // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < targets.rows(); i++) {
-        if (T >= loss_start && (T < loss_start + (*codelens)(i) )) {
-            cost -= std::log(GET_MAT(probs)(targets(i),i));
-            GET_GRAD(logprobs).col(i) = GET_MAT(probs).col(i);
-            GET_GRAD(logprobs)(targets(i), i) -= 1;
-        }
-    }
-    DEBUG_ASSERT_NOT_NAN(GET_GRAD(logprobs));
-    return cost;
+    //         #endif
+    //     }
+    // }
+    // DEBUG_ASSERT_NOT_NAN(GET_GRAD(logprobs));
+    // return cost;
 }
 
 template<typename Z, typename M>
 Z masked_cross_entropy(Mat<Z> logprobs,
-    uint& T,
-    shared_eigen_index_vector loss_start,
-    int codelens,
-    const M targets) {
-    Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
-    Z cost = 0.0;
-    // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < targets.rows(); i++) {
-        if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens)) {
-            cost -= std::log(GET_MAT(probs)(targets(i),i));
-            GET_GRAD(logprobs).col(i) = GET_MAT(probs).col(i);
-            GET_GRAD(logprobs)(targets(i), i) -= 1;
-        }
-    }
-    DEBUG_ASSERT_NOT_NAN(GET_GRAD(logprobs));
-    return cost;
+        uint& T,
+        uint loss_start,
+        shared_eigen_index_vector codelens,
+        const M targets) {
+    // Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
+    // Z cost = 0.0;
+    // // get cost for each pair of target and datastream:
+    // for (size_t i = 0; i < targets.rows(); i++) {
+    //     if (T >= loss_start && (T < loss_start + (*codelens)(i) )) {
+    //         cost -= std::log(GET_MAT(probs)(targets(i),i));
+    //         GET_GRAD(logprobs).col(i) = GET_MAT(probs).col(i);
+    //         GET_GRAD(logprobs)(targets(i), i) -= 1;
+    //     }
+    // }
+    // DEBUG_ASSERT_NOT_NAN(GET_GRAD(logprobs));
+    // return cost;
 }
 template<typename Z, typename M>
 Z masked_cross_entropy(Mat<Z> logprobs,
-    uint& T,
-    shared_eigen_index_vector loss_start,
-    uint codelens,
-    const M targets) {
-    Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
-    Z cost = 0.0;
-    // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < targets.rows(); i++) {
-        if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens)) {
-            cost -= std::log(GET_MAT(probs)(targets(i),i));
-            GET_GRAD(logprobs).col(i) = GET_MAT(probs).col(i);
-            GET_GRAD(logprobs)(targets(i), i) -= 1;
-        }
-    }
-    DEBUG_ASSERT_NOT_NAN(GET_GRAD(logprobs));
-    return cost;
+        uint& T,
+        int loss_start,
+        shared_eigen_index_vector codelens,
+        const M targets) {
+    // Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
+    // Z cost = 0.0;
+    // // get cost for each pair of target and datastream:
+    // for (size_t i = 0; i < targets.rows(); i++) {
+    //     if (T >= loss_start && (T < loss_start + (*codelens)(i) )) {
+    //         cost -= std::log(GET_MAT(probs)(targets(i),i));
+    //         GET_GRAD(logprobs).col(i) = GET_MAT(probs).col(i);
+    //         GET_GRAD(logprobs)(targets(i), i) -= 1;
+    //     }
+    // }
+    // DEBUG_ASSERT_NOT_NAN(GET_GRAD(logprobs));
+    // return cost;
+}
+
+template<typename Z, typename M>
+Z masked_cross_entropy(Mat<Z> logprobs,
+        uint& T,
+        shared_eigen_index_vector loss_start,
+        int codelens,
+        const M targets) {
+    // Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
+    // Z cost = 0.0;
+    // // get cost for each pair of target and datastream:
+    // for (size_t i = 0; i < targets.rows(); i++) {
+    //     if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens)) {
+    //         cost -= std::log(GET_MAT(probs)(targets(i),i));
+    //         GET_GRAD(logprobs).col(i) = GET_MAT(probs).col(i);
+    //         GET_GRAD(logprobs)(targets(i), i) -= 1;
+    //     }
+    // }
+    // DEBUG_ASSERT_NOT_NAN(GET_GRAD(logprobs));
+    // return cost;
 }
 template<typename Z, typename M>
 Z masked_cross_entropy(Mat<Z> logprobs,
-    uint& T,
-    int loss_start,
-    int codelens,
-    const M targets) {
-    Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
-    Z cost = 0.0;
-    // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < targets.rows(); i++) {
-        if (T >= loss_start && (T < loss_start + codelens)) {
-            cost -= std::log(GET_MAT(probs)(targets(i),i));
-            GET_GRAD(logprobs).col(i) = GET_MAT(probs).col(i);
-            GET_GRAD(logprobs)(targets(i), i) -= 1;
-        }
-    }
-    DEBUG_ASSERT_NOT_NAN(GET_GRAD(logprobs));
-    return cost;
+        uint& T,
+        shared_eigen_index_vector loss_start,
+        uint codelens,
+        const M targets) {
+    // Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
+    // Z cost = 0.0;
+    // // get cost for each pair of target and datastream:
+    // for (size_t i = 0; i < targets.rows(); i++) {
+    //     if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens)) {
+    //         cost -= std::log(GET_MAT(probs)(targets(i),i));
+    //         GET_GRAD(logprobs).col(i) = GET_MAT(probs).col(i);
+    //         GET_GRAD(logprobs)(targets(i), i) -= 1;
+    //     }
+    // }
+    // DEBUG_ASSERT_NOT_NAN(GET_GRAD(logprobs));
+    // return cost;
 }
 template<typename Z, typename M>
 Z masked_cross_entropy(Mat<Z> logprobs,
-    uint& T,
-    uint loss_start,
-    uint codelens,
-    const M targets) {
-    Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
-    Z cost = 0.0;
-    // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < targets.rows(); i++) {
-        if (T >= loss_start && (T < loss_start + codelens)) {
-            cost -= std::log(GET_MAT(probs)(targets(i),i));
-            GET_GRAD(logprobs).col(i) = GET_MAT(probs).col(i);
-            GET_GRAD(logprobs)(targets(i), i) -= 1;
-        }
-    }
-    DEBUG_ASSERT_NOT_NAN(GET_GRAD(logprobs));
-    return cost;
+        uint& T,
+        int loss_start,
+        int codelens,
+        const M targets) {
+    // Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
+    // Z cost = 0.0;
+    // // get cost for each pair of target and datastream:
+    // for (size_t i = 0; i < targets.rows(); i++) {
+    //     if (T >= loss_start && (T < loss_start + codelens)) {
+    //         cost -= std::log(GET_MAT(probs)(targets(i),i));
+    //         GET_GRAD(logprobs).col(i) = GET_MAT(probs).col(i);
+    //         GET_GRAD(logprobs)(targets(i), i) -= 1;
+    //     }
+    // }
+    // DEBUG_ASSERT_NOT_NAN(GET_GRAD(logprobs));
+    // return cost;
 }
 template<typename Z, typename M>
 Z masked_cross_entropy(Mat<Z> logprobs,
-    uint& T,
-    int loss_start,
-    uint codelens,
-    const M targets) {
-    Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
-    Z cost = 0.0;
-    // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < targets.rows(); i++) {
-        if (T >= loss_start && (T < loss_start + codelens)) {
-            cost -= std::log(GET_MAT(probs)(targets(i),i));
-            GET_GRAD(logprobs).col(i) = GET_MAT(probs).col(i);
-            GET_GRAD(logprobs)(targets(i), i) -= 1;
-        }
-    }
-    DEBUG_ASSERT_NOT_NAN(GET_GRAD(logprobs));
-    return cost;
+        uint& T,
+        uint loss_start,
+        uint codelens,
+        const M targets) {
+    // Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
+    // Z cost = 0.0;
+    // // get cost for each pair of target and datastream:
+    // for (size_t i = 0; i < targets.rows(); i++) {
+    //     if (T >= loss_start && (T < loss_start + codelens)) {
+    //         cost -= std::log(GET_MAT(probs)(targets(i),i));
+    //         GET_GRAD(logprobs).col(i) = GET_MAT(probs).col(i);
+    //         GET_GRAD(logprobs)(targets(i), i) -= 1;
+    //     }
+    // }
+    // DEBUG_ASSERT_NOT_NAN(GET_GRAD(logprobs));
+    // return cost;
 }
 template<typename Z, typename M>
 Z masked_cross_entropy(Mat<Z> logprobs,
-    uint& T,
-    uint loss_start,
-    int codelens,
-    const M targets) {
-    Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
-    Z cost = 0.0;
-    // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < targets.rows(); i++) {
-        if (T >= loss_start && (T < loss_start + codelens)) {
-            cost -= std::log(GET_MAT(probs)(targets(i),i));
-            GET_GRAD(logprobs).col(i) = GET_MAT(probs).col(i);
-            GET_GRAD(logprobs)(targets(i), i) -= 1;
-        }
-    }
-    DEBUG_ASSERT_NOT_NAN(GET_GRAD(logprobs));
-    return cost;
+        uint& T,
+        int loss_start,
+        uint codelens,
+        const M targets) {
+    // Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
+    // Z cost = 0.0;
+    // // get cost for each pair of target and datastream:
+    // for (size_t i = 0; i < targets.rows(); i++) {
+    //     if (T >= loss_start && (T < loss_start + codelens)) {
+    //         cost -= std::log(GET_MAT(probs)(targets(i),i));
+    //         GET_GRAD(logprobs).col(i) = GET_MAT(probs).col(i);
+    //         GET_GRAD(logprobs)(targets(i), i) -= 1;
+    //     }
+    // }
+    // DEBUG_ASSERT_NOT_NAN(GET_GRAD(logprobs));
+    // return cost;
+}
+template<typename Z, typename M>
+Z masked_cross_entropy(Mat<Z> logprobs,
+        uint& T,
+        uint loss_start,
+        int codelens,
+        const M targets) {
+    // Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
+    // Z cost = 0.0;
+    // // get cost for each pair of target and datastream:
+    // for (size_t i = 0; i < targets.rows(); i++) {
+    //     if (T >= loss_start && (T < loss_start + codelens)) {
+    //         cost -= std::log(GET_MAT(probs)(targets(i),i));
+    //         GET_GRAD(logprobs).col(i) = GET_MAT(probs).col(i);
+    //         GET_GRAD(logprobs)(targets(i), i) -= 1;
+    //     }
+    // }
+    // DEBUG_ASSERT_NOT_NAN(GET_GRAD(logprobs));
+    // return cost;
 }
 
 // MASKED CROSS ENTROPY NO GRAD
 
 template<typename Z, typename M>
 Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
-    uint& T,
-    shared_eigen_index_vector loss_start,
-    shared_eigen_index_vector codelens,
-    const M targets) {
-    Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
-    Z cost = 0.0;
-    // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < targets.rows(); i++)
-        if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + (*codelens)(i) ))
-            cost -= std::log(GET_MAT(probs)(targets(i),i));
-    return cost;
+        uint& T,
+        shared_eigen_index_vector loss_start,
+        shared_eigen_index_vector codelens,
+        const M targets) {
+    // Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
+    // Z cost = 0.0;
+    // // get cost for each pair of target and datastream:
+    // for (size_t i = 0; i < targets.rows(); i++)
+    //     if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + (*codelens)(i) ))
+    //         cost -= std::log(GET_MAT(probs)(targets(i),i));
+    // return cost;
 }
 
 template<typename Z, typename M>
 Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
-    uint& T,
-    uint loss_start,
-    shared_eigen_index_vector codelens,
-    const M targets) {
-    Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
-    Z cost = 0.0;
-    // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < targets.rows(); i++)
-        if (T >= loss_start && (T < loss_start + (*codelens)(i) ))
-            cost -= std::log(GET_MAT(probs)(targets(i),i));
-    return cost;
+        uint& T,
+        uint loss_start,
+        shared_eigen_index_vector codelens,
+        const M targets) {
+    // Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
+    // Z cost = 0.0;
+    // // get cost for each pair of target and datastream:
+    // for (size_t i = 0; i < targets.rows(); i++)
+    //     if (T >= loss_start && (T < loss_start + (*codelens)(i) ))
+    //         cost -= std::log(GET_MAT(probs)(targets(i),i));
+    // return cost;
 }
 template<typename Z, typename M>
 Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
-    uint& T,
-    int loss_start,
-    shared_eigen_index_vector codelens,
-    const M targets) {
-    Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
-    Z cost = 0.0;
-    // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < targets.rows(); i++)
-        if (T >= loss_start && (T < loss_start + (*codelens)(i) ))
-            cost -= std::log(GET_MAT(probs)(targets(i),i));
-    return cost;
+        uint& T,
+        int loss_start,
+        shared_eigen_index_vector codelens,
+        const M targets) {
+    // Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
+    // Z cost = 0.0;
+    // // get cost for each pair of target and datastream:
+    // for (size_t i = 0; i < targets.rows(); i++)
+    //     if (T >= loss_start && (T < loss_start + (*codelens)(i) ))
+    //         cost -= std::log(GET_MAT(probs)(targets(i),i));
+    // return cost;
 }
 
 template<typename Z, typename M>
 Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
-    uint& T,
-    shared_eigen_index_vector loss_start,
-    int codelens,
-    const M targets) {
-    Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
-    Z cost = 0.0;
-    // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < targets.rows(); i++)
-        if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens))
-            cost -= std::log(GET_MAT(probs)(targets(i),i));
-    return cost;
+        uint& T,
+        shared_eigen_index_vector loss_start,
+        int codelens,
+        const M targets) {
+    // Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
+    // Z cost = 0.0;
+    // // get cost for each pair of target and datastream:
+    // for (size_t i = 0; i < targets.rows(); i++)
+    //     if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens))
+    //         cost -= std::log(GET_MAT(probs)(targets(i),i));
+    // return cost;
 }
 template<typename Z, typename M>
 Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
-    uint& T,
-    shared_eigen_index_vector loss_start,
-    uint codelens,
-    const M targets) {
-    Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
-    Z cost = 0.0;
-    // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < targets.rows(); i++)
-        if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens))
-            cost -= std::log(GET_MAT(probs)(targets(i),i));
-    return cost;
+        uint& T,
+        shared_eigen_index_vector loss_start,
+        uint codelens,
+        const M targets) {
+    // Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
+    // Z cost = 0.0;
+    // // get cost for each pair of target and datastream:
+    // for (size_t i = 0; i < targets.rows(); i++)
+    //     if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens))
+    //         cost -= std::log(GET_MAT(probs)(targets(i),i));
+    // return cost;
 }
 template<typename Z, typename M>
 Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
-    uint& T,
-    int loss_start,
-    int codelens,
-    const M targets) {
-    Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
-    Z cost = 0.0;
-    // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < targets.rows(); i++)
-        if (T >= loss_start && (T < loss_start + codelens))
-            cost -= std::log(GET_MAT(probs)(targets(i),i));
-    return cost;
+        uint& T,
+        int loss_start,
+        int codelens,
+        const M targets) {
+    // Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
+    // Z cost = 0.0;
+    // // get cost for each pair of target and datastream:
+    // for (size_t i = 0; i < targets.rows(); i++)
+    //     if (T >= loss_start && (T < loss_start + codelens))
+    //         cost -= std::log(GET_MAT(probs)(targets(i),i));
+    // return cost;
 }
 template<typename Z, typename M>
 Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
-    uint& T,
-    uint loss_start,
-    uint codelens,
-    const M targets) {
-    Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
-    Z cost = 0.0;
-    // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < targets.rows(); i++)
-        if (T >= loss_start && (T < loss_start + codelens))
-            cost -= std::log(GET_MAT(probs)(targets(i),i));
-    return cost;
+        uint& T,
+        uint loss_start,
+        uint codelens,
+        const M targets) {
+    // Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
+    // Z cost = 0.0;
+    // // get cost for each pair of target and datastream:
+    // for (size_t i = 0; i < targets.rows(); i++)
+    //     if (T >= loss_start && (T < loss_start + codelens))
+    //         cost -= std::log(GET_MAT(probs)(targets(i),i));
+    // return cost;
 }
 template<typename Z, typename M>
 Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
-    uint& T,
-    int loss_start,
-    uint codelens,
-    const M targets) {
-    Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
-    Z cost = 0.0;
-    // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < targets.rows(); i++)
-        if (T >= loss_start && (T < loss_start + codelens))
-            cost -= std::log(GET_MAT(probs)(targets(i),i));
-    return cost;
+        uint& T,
+        int loss_start,
+        uint codelens,
+        const M targets) {
+    // Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
+    // Z cost = 0.0;
+    // // get cost for each pair of target and datastream:
+    // for (size_t i = 0; i < targets.rows(); i++)
+    //     if (T >= loss_start && (T < loss_start + codelens))
+    //         cost -= std::log(GET_MAT(probs)(targets(i),i));
+    // return cost;
 }
 template<typename Z, typename M>
 Z masked_cross_entropy_no_grad(Mat<Z> logprobs,
-    uint& T,
-    uint loss_start,
-    int codelens,
-    const M targets) {
-    Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
-    Z cost = 0.0;
-    // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < targets.rows(); i++)
-        if (T >= loss_start && (T < loss_start + codelens))
-            cost -= std::log(GET_MAT(probs)(targets(i),i));
-    return cost;
+        uint& T,
+        uint loss_start,
+        int codelens,
+        const M targets) {
+    // Mat<Z> probs = MatOps<Z>::softmax_no_grad(logprobs);
+    // Z cost = 0.0;
+    // // get cost for each pair of target and datastream:
+    // for (size_t i = 0; i < targets.rows(); i++)
+    //     if (T >= loss_start && (T < loss_start + codelens))
+    //         cost -= std::log(GET_MAT(probs)(targets(i),i));
+    // return cost;
 }
 
 template<typename Z>
 Z masked_sum(Mat<Z> values,
-    uint& T,
-    shared_eigen_index_vector loss_start,
-    shared_eigen_index_vector codelens,
-    const Z& gparent) {
-    Z cost = 0.0;
-    assert(values.dims().size() > 1);
-    // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values.dims(1); i++) {
-        if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + (*codelens)(i) )) {
-            cost += GET_MAT(values).col(i).sum() * gparent;
-            GET_GRAD(values).col(i).array() += gparent;
-        }
-    }
-    return cost;
+        uint& T,
+        shared_eigen_index_vector loss_start,
+        shared_eigen_index_vector codelens,
+        const Z& gparent) {
+    // Z cost = 0.0;
+    // assert(values.dims().size() > 1);
+    // // get cost for each pair of target and datastream:
+    // for (size_t i = 0; i < values.dims(1); i++) {
+    //     if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + (*codelens)(i) )) {
+    //         cost += GET_MAT(values).col(i).sum() * gparent;
+    //         GET_GRAD(values).col(i).array() += gparent;
+    //     }
+    // }
+    // return cost;
 }
 
 template<typename Z>
 Z masked_sum(Mat<Z> values,
-    uint& T,
-    shared_eigen_index_vector loss_start,
-    int codelens,
-    const Z& gparent) {
-    Z cost = 0.0;
-    assert(values.dims().size() > 1);
-    // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values.dims(1); i++) {
-        if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens )) {
-            cost += GET_MAT(values).col(i).sum() * gparent;
-            GET_GRAD(values).col(i).array() += gparent;
-        }
-    }
-    return cost;
+        uint& T,
+        shared_eigen_index_vector loss_start,
+        int codelens,
+        const Z& gparent) {
+    // Z cost = 0.0;
+    // assert(values.dims().size() > 1);
+    // // get cost for each pair of target and datastream:
+    // for (size_t i = 0; i < values.dims(1); i++) {
+    //     if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens )) {
+    //         cost += GET_MAT(values).col(i).sum() * gparent;
+    //         GET_GRAD(values).col(i).array() += gparent;
+    //     }
+    // }
+    // return cost;
 }
 template<typename Z>
 Z masked_sum(Mat<Z> values,
-    uint& T,
-    shared_eigen_index_vector loss_start,
-    uint codelens,
-    const Z& gparent) {
-    Z cost = 0.0;
-    assert(values.dims().size() > 1);
-    // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values.dims(1); i++) {
-        if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens )) {
-            cost += GET_MAT(values).col(i).sum() * gparent;
-            GET_GRAD(values).col(i).array() += gparent;
-        }
-    }
-    return cost;
-}
-
-template<typename Z>
-Z masked_sum(Mat<Z> values,
-    uint& T,
-    uint loss_start,
-    shared_eigen_index_vector codelens,
-    const Z& gparent) {
-    Z cost = 0.0;
-    assert(values.dims().size() > 1);
-    // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values.dims(1); i++) {
-        if (T >= loss_start && (T < loss_start + (*codelens)(i) )) {
-            cost += GET_MAT(values).col(i).sum() * gparent;
-            GET_GRAD(values).col(i).array() += gparent;
-        }
-    }
-    return cost;
-}
-template<typename Z>
-Z masked_sum(Mat<Z> values,
-    uint& T,
-    int loss_start,
-    shared_eigen_index_vector codelens,
-    const Z& gparent) {
-    Z cost = 0.0;
-    assert(values.dims().size() > 1);
-    // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values.dims(1); i++) {
-        if (T >= loss_start && (T < loss_start + (*codelens)(i) )) {
-            cost += GET_MAT(values).col(i).sum() * gparent;
-            GET_GRAD(values).col(i).array() += gparent;
-        }
-    }
-    return cost;
+        uint& T,
+        shared_eigen_index_vector loss_start,
+        uint codelens,
+        const Z& gparent) {
+    // Z cost = 0.0;
+    // assert(values.dims().size() > 1);
+    // // get cost for each pair of target and datastream:
+    // for (size_t i = 0; i < values.dims(1); i++) {
+    //     if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens )) {
+    //         cost += GET_MAT(values).col(i).sum() * gparent;
+    //         GET_GRAD(values).col(i).array() += gparent;
+    //     }
+    // }
+    // return cost;
 }
 
 template<typename Z>
 Z masked_sum(Mat<Z> values,
-    uint& T,
-    uint loss_start,
-    uint codelens,
-    const Z& gparent) {
-    Z cost = 0.0;
-    assert(values.dims().size() > 1);
-    // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values.dims(1); i++) {
-        if (T >= loss_start && (T < loss_start + codelens )) {
-            cost += GET_MAT(values).col(i).sum() * gparent;
-            GET_GRAD(values).col(i).array() += gparent;
-        }
-    }
-    return cost;
+        uint& T,
+        uint loss_start,
+        shared_eigen_index_vector codelens,
+        const Z& gparent) {
+    // Z cost = 0.0;
+    // assert(values.dims().size() > 1);
+    // // get cost for each pair of target and datastream:
+    // for (size_t i = 0; i < values.dims(1); i++) {
+    //     if (T >= loss_start && (T < loss_start + (*codelens)(i) )) {
+    //         cost += GET_MAT(values).col(i).sum() * gparent;
+    //         GET_GRAD(values).col(i).array() += gparent;
+    //     }
+    // }
+    // return cost;
 }
 template<typename Z>
 Z masked_sum(Mat<Z> values,
-    uint& T,
-    int loss_start,
-    int codelens,
-    const Z& gparent) {
-    Z cost = 0.0;
-    assert(values.dims().size() > 1);
-    // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values.dims(1); i++) {
-        if (T >= loss_start && (T < loss_start + codelens )) {
-            cost += GET_MAT(values).col(i).sum() * gparent;
-            GET_GRAD(values).col(i).array() += gparent;
-        }
-    }
-    return cost;
+        uint& T,
+        int loss_start,
+        shared_eigen_index_vector codelens,
+        const Z& gparent) {
+    // Z cost = 0.0;
+    // assert(values.dims().size() > 1);
+    // // get cost for each pair of target and datastream:
+    // for (size_t i = 0; i < values.dims(1); i++) {
+    //     if (T >= loss_start && (T < loss_start + (*codelens)(i) )) {
+    //         cost += GET_MAT(values).col(i).sum() * gparent;
+    //         GET_GRAD(values).col(i).array() += gparent;
+    //     }
+    // }
+    // return cost;
+}
+
+template<typename Z>
+Z masked_sum(Mat<Z> values,
+        uint& T,
+        uint loss_start,
+        uint codelens,
+        const Z& gparent) {
+    // Z cost = 0.0;
+    // assert(values.dims().size() > 1);
+    // // get cost for each pair of target and datastream:
+    // for (size_t i = 0; i < values.dims(1); i++) {
+    //     if (T >= loss_start && (T < loss_start + codelens )) {
+    //         cost += GET_MAT(values).col(i).sum() * gparent;
+    //         GET_GRAD(values).col(i).array() += gparent;
+    //     }
+    // }
+    // return cost;
 }
 template<typename Z>
 Z masked_sum(Mat<Z> values,
-    uint& T,
-    uint loss_start,
-    int codelens,
-    const Z& gparent) {
-    Z cost = 0.0;
-    assert(values.dims().size() > 1);
-    // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values.dims(1); i++) {
-        if (T >= loss_start && (T < loss_start + codelens )) {
-            cost += GET_MAT(values).col(i).sum() * gparent;
-            GET_GRAD(values).col(i).array() += gparent;
-        }
-    }
-    return cost;
+        uint& T,
+        int loss_start,
+        int codelens,
+        const Z& gparent) {
+    // Z cost = 0.0;
+    // assert(values.dims().size() > 1);
+    // // get cost for each pair of target and datastream:
+    // for (size_t i = 0; i < values.dims(1); i++) {
+    //     if (T >= loss_start && (T < loss_start + codelens )) {
+    //         cost += GET_MAT(values).col(i).sum() * gparent;
+    //         GET_GRAD(values).col(i).array() += gparent;
+    //     }
+    // }
+    // return cost;
 }
 template<typename Z>
 Z masked_sum(Mat<Z> values,
-    uint& T,
-    int loss_start,
-    uint codelens,
-    const Z& gparent) {
-    Z cost = 0.0;
-    assert(values.dims().size() > 1);
-    // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values.dims(1); i++) {
-        if (T >= loss_start && (T < loss_start + codelens )) {
-            cost += GET_MAT(values).col(i).sum() * gparent;
-            GET_GRAD(values).col(i).array() += gparent;
-        }
-    }
-    return cost;
+        uint& T,
+        uint loss_start,
+        int codelens,
+        const Z& gparent) {
+    // Z cost = 0.0;
+    // assert(values.dims().size() > 1);
+    // // get cost for each pair of target and datastream:
+    // for (size_t i = 0; i < values.dims(1); i++) {
+    //     if (T >= loss_start && (T < loss_start + codelens )) {
+    //         cost += GET_MAT(values).col(i).sum() * gparent;
+    //         GET_GRAD(values).col(i).array() += gparent;
+    //     }
+    // }
+    // return cost;
+}
+template<typename Z>
+Z masked_sum(Mat<Z> values,
+        uint& T,
+        int loss_start,
+        uint codelens,
+        const Z& gparent) {
+    // Z cost = 0.0;
+    // assert(values.dims().size() > 1);
+    // // get cost for each pair of target and datastream:
+    // for (size_t i = 0; i < values.dims(1); i++) {
+    //     if (T >= loss_start && (T < loss_start + codelens )) {
+    //         cost += GET_MAT(values).col(i).sum() * gparent;
+    //         GET_GRAD(values).col(i).array() += gparent;
+    //     }
+    // }
+    // return cost;
 }
 
 // MASKED SUM NO GRAD
 
 template<typename Z>
 Z masked_sum_no_grad(Mat<Z> values,
-    uint& T,
-    shared_eigen_index_vector loss_start,
-    shared_eigen_index_vector codelens,
-    const Z& gparent) {
-    Z cost = 0.0;
-    assert(values.dims().size() > 1);
-    // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values.dims(1); i++)
-        if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + (*codelens)(i) ))
-            cost += GET_MAT(values).col(i).sum() * gparent;
-    return cost;
+        uint& T,
+        shared_eigen_index_vector loss_start,
+        shared_eigen_index_vector codelens,
+        const Z& gparent) {
+    // Z cost = 0.0;
+    // assert(values.dims().size() > 1);
+    // // get cost for each pair of target and datastream:
+    // for (size_t i = 0; i < values.dims(1); i++)
+    //     if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + (*codelens)(i) ))
+    //         cost += GET_MAT(values).col(i).sum() * gparent;
+    // return cost;
 }
 
 template<typename Z>
 Z masked_sum_no_grad(Mat<Z> values,
-    uint& T,
-    shared_eigen_index_vector loss_start,
-    int codelens,
-    const Z& gparent) {
-    Z cost = 0.0;
-    assert(values.dims().size() > 1);
-    // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values.dims(1); i++)
-        if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens ))
-            cost += GET_MAT(values).col(i).sum() * gparent;
-    return cost;
+        uint& T,
+        shared_eigen_index_vector loss_start,
+        int codelens,
+        const Z& gparent) {
+    // Z cost = 0.0;
+    // assert(values.dims().size() > 1);
+    // // get cost for each pair of target and datastream:
+    // for (size_t i = 0; i < values.dims(1); i++)
+    //     if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens ))
+    //         cost += GET_MAT(values).col(i).sum() * gparent;
+    // return cost;
 }
 template<typename Z>
 Z masked_sum_no_grad(Mat<Z> values,
-    uint& T,
-    shared_eigen_index_vector loss_start,
-    uint codelens,
-    const Z& gparent) {
-    Z cost = 0.0;
-    assert(values.dims().size() > 1);
-    // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values.dims(1); i++)
-        if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens ))
-            cost += GET_MAT(values).col(i).sum() * gparent;
-    return cost;
-}
-
-template<typename Z>
-Z masked_sum_no_grad(Mat<Z> values,
-    uint& T,
-    uint loss_start,
-    shared_eigen_index_vector codelens,
-    const Z& gparent) {
-    Z cost = 0.0;
-    assert(values.dims().size() > 1);
-    // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values.dims(1); i++)
-        if (T >= loss_start && (T < loss_start + (*codelens)(i) ))
-            cost += GET_MAT(values).col(i).sum() * gparent;
-    return cost;
-}
-template<typename Z>
-Z masked_sum_no_grad(Mat<Z> values,
-    uint& T,
-    int loss_start,
-    shared_eigen_index_vector codelens,
-    const Z& gparent) {
-    Z cost = 0.0;
-    assert(values.dims().size() > 1);
-    // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values.dims(1); i++)
-        if (T >= loss_start && (T < loss_start + (*codelens)(i) ))
-            cost += GET_MAT(values).col(i).sum() * gparent;
-    return cost;
+        uint& T,
+        shared_eigen_index_vector loss_start,
+        uint codelens,
+        const Z& gparent) {
+    // Z cost = 0.0;
+    // assert(values.dims().size() > 1);
+    // // get cost for each pair of target and datastream:
+    // for (size_t i = 0; i < values.dims(1); i++)
+    //     if (T >= (*loss_start)(i) && (T < (*loss_start)(i) + codelens ))
+    //         cost += GET_MAT(values).col(i).sum() * gparent;
+    // return cost;
 }
 
 template<typename Z>
 Z masked_sum_no_grad(Mat<Z> values,
-    uint& T,
-    uint loss_start,
-    uint codelens,
-    const Z& gparent) {
-    Z cost = 0.0;
-    assert(values.dims().size() > 1);
-    // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values.dims(1); i++)
-        if (T >= loss_start && (T < loss_start + codelens ))
-            cost += GET_MAT(values).col(i).sum() * gparent;
-    return cost;
+        uint& T,
+        uint loss_start,
+        shared_eigen_index_vector codelens,
+        const Z& gparent) {
+    // Z cost = 0.0;
+    // assert(values.dims().size() > 1);
+    // // get cost for each pair of target and datastream:
+    // for (size_t i = 0; i < values.dims(1); i++)
+    //     if (T >= loss_start && (T < loss_start + (*codelens)(i) ))
+    //         cost += GET_MAT(values).col(i).sum() * gparent;
+    // return cost;
 }
 template<typename Z>
 Z masked_sum_no_grad(Mat<Z> values,
-    uint& T,
-    int loss_start,
-    int codelens,
-    const Z& gparent) {
-    Z cost = 0.0;
-    assert(values.dims().size() > 1);
-    // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values.dims(1); i++)
-        if (T >= loss_start && (T < loss_start + codelens ))
-            cost += GET_MAT(values).col(i).sum() * gparent;
-    return cost;
+        uint& T,
+        int loss_start,
+        shared_eigen_index_vector codelens,
+        const Z& gparent) {
+    // Z cost = 0.0;
+    // assert(values.dims().size() > 1);
+    // // get cost for each pair of target and datastream:
+    // for (size_t i = 0; i < values.dims(1); i++)
+    //     if (T >= loss_start && (T < loss_start + (*codelens)(i) ))
+    //         cost += GET_MAT(values).col(i).sum() * gparent;
+    // return cost;
+}
+
+template<typename Z>
+Z masked_sum_no_grad(Mat<Z> values,
+        uint& T,
+        uint loss_start,
+        uint codelens,
+        const Z& gparent) {
+    // Z cost = 0.0;
+    // assert(values.dims().size() > 1);
+    // // get cost for each pair of target and datastream:
+    // for (size_t i = 0; i < values.dims(1); i++)
+    //     if (T >= loss_start && (T < loss_start + codelens ))
+    //         cost += GET_MAT(values).col(i).sum() * gparent;
+    // return cost;
 }
 template<typename Z>
 Z masked_sum_no_grad(Mat<Z> values,
-    uint& T,
-    uint loss_start,
-    int codelens,
-    const Z& gparent) {
-    Z cost = 0.0;
-    assert(values.dims().size() > 1);
-    // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values.dims(1); i++)
-        if (T >= loss_start && (T < loss_start + codelens ))
-            cost += GET_MAT(values).col(i).sum() * gparent;
-    return cost;
+        uint& T,
+        int loss_start,
+        int codelens,
+        const Z& gparent) {
+    // Z cost = 0.0;
+    // assert(values.dims().size() > 1);
+    // // get cost for each pair of target and datastream:
+    // for (size_t i = 0; i < values.dims(1); i++)
+    //     if (T >= loss_start && (T < loss_start + codelens ))
+    //         cost += GET_MAT(values).col(i).sum() * gparent;
+    // return cost;
 }
 template<typename Z>
 Z masked_sum_no_grad(Mat<Z> values,
-    uint& T,
-    int loss_start,
-    uint codelens,
-    const Z& gparent) {
-    Z cost = 0.0;
-    assert(values.dims().size() > 1);
-    // get cost for each pair of target and datastream:
-    for (size_t i = 0; i < values.dims(1); i++)
-        if (T >= loss_start && (T < loss_start + codelens ))
-            cost += GET_MAT(values).col(i).sum() * gparent;
-    return cost;
+        uint& T,
+        uint loss_start,
+        int codelens,
+        const Z& gparent) {
+    // Z cost = 0.0;
+    // assert(values.dims().size() > 1);
+    // // get cost for each pair of target and datastream:
+    // for (size_t i = 0; i < values.dims(1); i++)
+    //     if (T >= loss_start && (T < loss_start + codelens ))
+    //         cost += GET_MAT(values).col(i).sum() * gparent;
+    // return cost;
+}
+template<typename Z>
+Z masked_sum_no_grad(Mat<Z> values,
+        uint& T,
+        int loss_start,
+        uint codelens,
+        const Z& gparent) {
+    // Z cost = 0.0;
+    // assert(values.dims().size() > 1);
+    // // get cost for each pair of target and datastream:
+    // for (size_t i = 0; i < values.dims(1); i++)
+    //     if (T >= loss_start && (T < loss_start + codelens ))
+    //         cost += GET_MAT(values).col(i).sum() * gparent;
+    // return cost;
 }
 
 // BEGIN TEMPLATE SPECIALIZATIONS

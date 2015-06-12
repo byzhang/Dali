@@ -1,4 +1,4 @@
-#include <gtest/gtest.h>
+/*#include <gtest/gtest.h>
 
 #include "dali/data_processing/Glove.h"
 #include "dali/data_processing/Arithmetic.h"
@@ -151,3 +151,4 @@ TEST(paraphrase, convert_to_indexed_minibatches) {
 }
 
 
+*/
