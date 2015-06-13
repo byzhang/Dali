@@ -11,10 +11,11 @@ set -u
 file=${1:-}
 if [[ -z "$file" ]]
 then
-    echo "Usage S0 FILE.cpp.template"
+    echo "Usage $0 FILE.cpp.template"
     exit 1
 fi
 
 SCRIPT_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+PROJECT_DIR=$( dirname $SCRIPT_DIR )
 
-python3 $SCRIPT_DIR/template_instantiator.py $file
+python3 $PROJECT_DIR/scripts/template_instantiator.py $file
