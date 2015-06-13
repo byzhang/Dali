@@ -119,7 +119,7 @@ class Mat {
         grad_internal_t dw() const;
 
         const std::vector<dim_t>& dims() const;
-        const dim_t dims(int idx) const;
+        dim_t dims(int idx) const;
 
         unsigned int number_of_elements() const;
 

@@ -27,7 +27,7 @@ struct weights {
     // weights<R>::uniform(m), were m is the number of columns in your matrix.
     // DISCLAIMER: do not use on big matrices (like embeddings) - faster version
     // is a subject of current research.
-    static initializer_t svd(initializer_t preinitializer=gaussian(1.0));
+    static initializer_t svd(initializer_t preinitializer = gaussian(1.0));
 };
 
 #endif

@@ -82,6 +82,13 @@ AssertionResult buffer_almost_equals(T* buffer1, T* buffer2, uint size1, uint si
                                                                                   (B).number_of_elements(), \
                                                                                   (eps)))
 
+
+class MatrixTests : public MemorySafeTest {
+    virtual void SetUp() {
+        dali_init();
+    }
+};
+
 /**
 Gradient Same
 -------------
@@ -142,7 +149,6 @@ bool gradient_same(
     return worked_out;
 }
 
-typedef MemorySafeTest MatrixTests;
 
 TEST_F(MatrixTests, addition) {
     auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));

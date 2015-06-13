@@ -8,6 +8,8 @@
 #include <vector>
 #include <mshadow/tensor.h>
 
+#include "dali/mat/math/SynchronizedTensor.h"
+
 #ifdef DALI_USE_CUDA
 typedef mshadow::gpu device_t;
 #else
@@ -16,12 +18,14 @@ typedef mshadow::cpu device_t;
 
 typedef unsigned int dim_t;
 
+void dali_init();
+
 template<typename R>
 class MatInternal {
     private:
         static std::atomic<int> next_matrix;
     public:
-        typedef mshadow::Tensor<device_t, 2, R> mat_storage_t;
+        typedef SynchronizedTensor<R> mat_storage_t;
 
         mat_storage_t w;
 
@@ -52,7 +56,7 @@ class MatInternal {
 template<typename R>
 class GradInternal {
     public:
-        typedef mshadow::Tensor<device_t, 2, R> mat_storage_t;
+        typedef SynchronizedTensor<R> mat_storage_t;
 
         mat_storage_t dw;
 

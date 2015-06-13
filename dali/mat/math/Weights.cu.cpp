@@ -14,7 +14,7 @@ typename weights<R>::initializer_t weights<R>::uninitialized() {
 template<typename R>
 typename weights<R>::initializer_t weights<R>::zeros() {
     return [](Mat<R>& matrix){
-        tensor_fill(GET_MAT(matrix), 0);
+        tensor_fill(GET_MAT_ST(matrix), 0);
     };
 };
 
@@ -29,12 +29,32 @@ typename weights<R>::initializer_t weights<R>::eye(R diag) {
     };
 };
 
+/*
+DALI_EXECUTE_ST_FUNCTION(GET_MAT_ST(matrix),
+        [](auto t, ));
+template<typename R, typename Device>
+static void fill_uniform(mshadow::Tensor<Device, 2, R>& t) {
+
+    std::random_device rd;
+    mshadow::Random<Device, R> generator((int)rd());
+    generator.SampleUniform(&GET_MAT(matrix), lower, upper);
+}
+*/
+
+
 template<typename R>
 typename weights<R>::initializer_t weights<R>::uniform(R lower, R upper) {
     return [lower, upper](Mat<R>& matrix){
-        std::random_device rd;
-        mshadow::Random<device_t, R> generator((int)rd());
-        generator.SampleUniform(&GET_MAT(matrix), lower, upper);
+        auto& st = GET_MAT_ST(matrix);
+        if(st.prefers_cpu()) {
+            std::random_device rd;
+            mshadow::Random<mshadow::cpu, R> generator((int)rd());
+            generator.SampleUniform(&st.mutable_cpu_data(), lower, upper);
+        } else {
+            std::random_device rd;
+            mshadow::Random<mshadow::gpu, R> generator((int)rd());
+            generator.SampleUniform(&st.mutable_gpu_data(), lower, upper);
+        }
     };
 };
 

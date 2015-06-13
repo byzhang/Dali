@@ -73,7 +73,7 @@ const vector<dim_t>& Mat<R>::dims() const {
 }
 
 template<typename R>
-const dim_t Mat<R>::dims(int idx) const {
+dim_t Mat<R>::dims(int idx) const {
     if (m != nullptr)
         return m->dims[idx];
     return (dim_t) 0;
