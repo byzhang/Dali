@@ -125,7 +125,7 @@ class Mat {
 
         bool empty() const;
 
-        const int id() const;
+        int id() const;
 
         void set_name(std::string& newname);
         void set_name(char* newname);

@@ -85,7 +85,7 @@ bool Mat<R>::empty() const {
 }
 
 template<typename R>
-const int Mat<R>::id() const {
+int Mat<R>::id() const {
     if (m != nullptr)
         return m->id;
     return -1;
