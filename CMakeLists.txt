@@ -30,6 +30,11 @@ else()
     endif()
 endif(DEFINED WITH_VISUALIZER)
 
+if (WITH_VISUALIZER)
+    message("adding definitions")
+    add_definitions(-DDALI_USE_VISUALIZER)
+endif(WITH_VISUALIZER)
+
 # CUDA BEGINS HERE
 if (DEFINED WITH_CUDA)
     message("WITH_CUDA ${WITH_CUDA}")

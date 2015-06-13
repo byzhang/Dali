@@ -42,8 +42,6 @@ foreach(header ${DaliTemplates})
         DEPENDS ${header})
 endforeach(header)
 
-message(DaliSources "${DaliSources}")
-
 add_library(dali
         ${DaliSources}
         ${DaliHeaders}

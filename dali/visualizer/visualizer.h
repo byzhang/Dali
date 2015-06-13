@@ -3,7 +3,9 @@
 
 #include <gflags/gflags.h>
 #include <json11.hpp>
-#include <redox.hpp>
+#ifdef DALI_USE_VISUALIZER
+    #include <redox.hpp>
+#endif
 #include <memory>
 #include <chrono>
 #include <functional>
@@ -152,7 +154,9 @@ namespace visualizable {
 class Visualizer {
     private:
         std::string my_namespace;
+#ifdef DALI_USE_VISUALIZER
         std::shared_ptr<redox::Redox> rdx;
+#endif
         EventQueue eq;
         EventQueue::repeating_t pinging;
         Throttled throttle;

@@ -312,115 +312,127 @@ namespace visualizable {
 
 }
 
-void Visualizer::connected_callback(int status) {
-    rdx_state.store(status);
-}
 
-bool Visualizer::ensure_connection() {
-    std::unique_lock<std::mutex> guard(connection_mutex);
-    if (rdx_state.load() != redox::Redox::CONNECTED &&
-            rdx_state.load() != redox::Redox::NOT_YET_CONNECTED) {
-        rdx.reset();
-        rdx = std::make_shared<redox::Redox>(std::cout, redox::log::Off);
 
-        rdx_state.store(redox::Redox::NOT_YET_CONNECTED);
+#ifdef DALI_USE_VISUALIZER
+    bool Visualizer::ensure_connection() {
+        std::unique_lock<std::mutex> guard(connection_mutex);
+        if (rdx_state.load() != redox::Redox::CONNECTED &&
+                rdx_state.load() != redox::Redox::NOT_YET_CONNECTED) {
+            rdx.reset();
+            rdx = std::make_shared<redox::Redox>(std::cout, redox::log::Off);
 
-        rdx->connect(FLAGS_visualizer_hostname,
-                 FLAGS_visualizer_port,
-                 std::bind(&Visualizer::connected_callback, this, _1));
+            rdx_state.store(redox::Redox::NOT_YET_CONNECTED);
+
+            rdx->connect(FLAGS_visualizer_hostname,
+                     FLAGS_visualizer_port,
+                     std::bind(&Visualizer::connected_callback, this, _1));
+        }
+        return rdx_state.load() == redox::Redox::CONNECTED;
     }
-    return rdx_state.load() == redox::Redox::CONNECTED;
-}
-
-Visualizer::Visualizer(std::string my_namespace,
-                       bool rename_if_needed) :
-        my_namespace(my_namespace),
-        rename_if_needed(rename_if_needed),
-        rdx_state(redox::Redox::DISCONNECTED) {
-
-
-    // then we ping the visualizer regularly:
-    pinging = eq.run_every([this]() {
-        if (!ensure_connection()) {
-            name_initialized = false;
-            return;
-        }
-
-        if (!name_initialized)
-            name_initialized = update_name();
-
-        if (!name_initialized)
-            return;
-
-        // Expire at 2 seconds
-        std::string namespace_key = MS() << "namespace_" << this->my_namespace;
-        rdx->command<string>({"SET", namespace_key, "1", "EX", "2"});
-
-    }, std::chrono::seconds(1));
-}
-
-bool Visualizer::update_name() {
-    int increment = 0;
-
-    while (true) {
-        std::string namespace_key;
-        if (increment == 0) {
-            namespace_key = MS() << "namespace_" << this->my_namespace;
-        } else {
-            namespace_key = MS() << "namespace_" << this->my_namespace << "_" << increment;
-        }
-        bool taken;
-        try {
-            auto& key_exists = rdx->commandSync<int>({"EXISTS", namespace_key});
-            if (!key_exists.ok())
-                return false;
-            taken = (key_exists.reply() == 1);
-            key_exists.free();
-        } catch (std::runtime_error e) {
-            return false;
-        }
-
-        if(taken) {
-            if (rename_if_needed) {
-                std::cout << "Duplicate Visualizer name : \"" << this->my_namespace  << "_" << increment
-                          << "\". Retrying with \"" << this->my_namespace << "_" << increment + 1 << "\"" << std::endl;
-                increment++;
-                continue;
-            } else {
-                // give up immediately on renaming
-                // and throw duplicate name error:
-                throw Visualizer::duplicate_name_error(MS() << "VISUALIZER ERROR: visualizer name already in use: " << my_namespace);
+    void Visualizer::connected_callback(int status) {
+        rdx_state.store(status);
+    }
+    Visualizer::Visualizer(std::string my_namespace,
+                           bool rename_if_needed) :
+            my_namespace(my_namespace),
+            rename_if_needed(rename_if_needed),
+            rdx_state(redox::Redox::DISCONNECTED) {
+        // then we ping the visualizer regularly:
+        pinging = eq.run_every([this]() {
+            if (!ensure_connection()) {
+                name_initialized = false;
+                return;
             }
-        } else {
-            if (increment != 0)
-                my_namespace = MS() << my_namespace << "_" << increment;
-            break;
-        }
+
+            if (!name_initialized)
+                name_initialized = update_name();
+
+            if (!name_initialized)
+                return;
+
+            // Expire at 2 seconds
+            std::string namespace_key = MS() << "namespace_" << this->my_namespace;
+            rdx->command<string>({"SET", namespace_key, "1", "EX", "2"});
+
+        }, std::chrono::seconds(1));
     }
-    return true;
-}
 
+    bool Visualizer::update_name() {
+        int increment = 0;
 
-void Visualizer::feed(const json11::Json& obj) {
-    if (!ensure_connection())
-        return;
+        while (true) {
+            std::string namespace_key;
+            if (increment == 0) {
+                namespace_key = MS() << "namespace_" << this->my_namespace;
+            } else {
+                namespace_key = MS() << "namespace_" << this->my_namespace << "_" << increment;
+            }
+            bool taken;
+            try {
+                auto& key_exists = rdx->commandSync<int>({"EXISTS", namespace_key});
+                if (!key_exists.ok())
+                    return false;
+                taken = (key_exists.reply() == 1);
+                key_exists.free();
+            } catch (std::runtime_error e) {
+                return false;
+            }
 
-    rdx->publish(MS() << "feed_" << my_namespace, obj.dump());
-}
+            if(taken) {
+                if (rename_if_needed) {
+                    std::cout << "Duplicate Visualizer name : \"" << this->my_namespace  << "_" << increment
+                              << "\". Retrying with \"" << this->my_namespace << "_" << increment + 1 << "\"" << std::endl;
+                    increment++;
+                    continue;
+                } else {
+                    // give up immediately on renaming
+                    // and throw duplicate name error:
+                    throw Visualizer::duplicate_name_error(MS() << "VISUALIZER ERROR: visualizer name already in use: " << my_namespace);
+                }
+            } else {
+                if (increment != 0)
+                    my_namespace = MS() << my_namespace << "_" << increment;
+                break;
+            }
+        }
+        return true;
+    }
 
-void Visualizer::feed(const std::string& str) {
-    Json str_as_json = Json::object {
-        { "type", "report" },
-        { "data", str },
-    };
-    feed(str_as_json);
-}
+    void Visualizer::feed(const json11::Json& obj) {
+        if (!ensure_connection())
+            return;
 
-void Visualizer::throttled_feed(Throttled::Clock::duration time_between_feeds, std::function<json11::Json()> f) {
-    throttle.maybe_run(time_between_feeds, [&f, this]() {
-        feed(f());
-    });
-}
+        rdx->publish(MS() << "feed_" << my_namespace, obj.dump());
+    }
+
+    void Visualizer::feed(const std::string& str) {
+        Json str_as_json = Json::object {
+            { "type", "report" },
+            { "data", str },
+        };
+        feed(str_as_json);
+    }
+    void Visualizer::throttled_feed(Throttled::Clock::duration time_between_feeds, std::function<json11::Json()> f) {
+        throttle.maybe_run(time_between_feeds, [&f, this]() {
+            feed(f());
+        });
+    }
+
+#else
+    bool Visualizer::ensure_connection() { return false; }
+    void Visualizer::connected_callback(int status) {}
+    Visualizer::Visualizer(std::string my_namespace,
+                           bool rename_if_needed) :
+            rename_if_needed(rename_if_needed) {
+        std::cout << "WARNING: Dali was compiled without visualizer - Visualizer class won't work very well." << std::endl;
+    }
+    bool Visualizer::update_name() { return true; }
+    void Visualizer::feed(const json11::Json& obj) {}
+    void Visualizer::feed(const std::string& str) {}
+    void Visualizer::throttled_feed(Throttled::Clock::duration time_between_feeds, std::function<json11::Json()> f) {}
+#endif
+
 
 Visualizer::duplicate_name_error::duplicate_name_error(const std::string& what_arg) : std::runtime_error(what_arg) {}
 Visualizer::duplicate_name_error::duplicate_name_error(const char* what_arg) : std::runtime_error(what_arg) {}
