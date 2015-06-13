@@ -6,10 +6,21 @@
 #include "dali/mat/math/SynchronizedTensor.h"
 
 
-#define GRAD(X) if (!(X).constant) GET_GRAD(X)
 
-#define GET_MAT_ST(X) ((X).w()->w)
-#define GET_GRAD_ST(X) ((X).dw()->dw)
+#define DALI_MAT_ST(matrix) ((matrix).w()->w)
+#define DALI_GRAD_ST(X) ((X).dw()->dw)
+
+#define GRAD(X) if (!(X).constant()) GET_GRAD(X)
+
+#define DALI_EXECUTE_ST_FUNCTION_MUT(st, f, ...)     \
+        if ((st).prefers_gpu()) {                    \
+            f((st).mutable_gpu_data(), __VA_ARGS__); \
+        } else {                                     \
+            f((st).mutable_gpu_data(), __VA_ARGS__); \
+        }
+#define TENSOR_TEMPLATE template<typename Device, int dims, typename R>
+
+
 
 template<typename Device, int ndims, typename R, typename R2>
 inline void tensor_fill(mshadow::Tensor<Device, ndims, R>& ts, R2 filler) {
