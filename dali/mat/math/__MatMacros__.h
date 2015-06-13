@@ -12,30 +12,31 @@
 
 #define GRAD(X) if (!(X).constant()) GET_GRAD(X)
 
-#define DALI_EXECUTE_ST_FUNCTION_MUT(st, f, ...)     \
-        if ((st).prefers_gpu()) {                    \
-            f((st).mutable_gpu_data(), __VA_ARGS__); \
-        } else {                                     \
-            f((st).mutable_gpu_data(), __VA_ARGS__); \
-        }
+#ifdef DALI_USE_CUDA
+    #define DALI_EXECUTE_ST_FUNCTION_MUT(st, f, ...)     \
+            if ((st).prefers_gpu()) {                    \
+                f((st).mutable_gpu_data(), __VA_ARGS__); \
+            } else {                                     \
+                f((st).mutable_cpu_data(), __VA_ARGS__); \
+            }
+#else
+    #define DALI_EXECUTE_ST_FUNCTION_MUT(st, f, ...) \
+            f((st).mutable_cpu_data(), __VA_ARGS__);
+#endif
+
 #define TENSOR_TEMPLATE template<typename Device, int dims, typename R>
 
 
 
 template<typename Device, int ndims, typename R, typename R2>
-inline void tensor_fill(mshadow::Tensor<Device, ndims, R>& ts, R2 filler) {
+void tensor_fill(mshadow::Tensor<Device, ndims, R>& ts, R2 filler) {
     mshadow::MapExp<mshadow::sv::saveto>(&ts, mshadow::expr::ScalarExp<R>((R)filler));
 }
 
 template<typename R, typename R2>
 inline void tensor_fill(SynchronizedTensor<R>& t, R2 filler) {
-    if (t.prefers_gpu()) {
-        tensor_fill(t.mutable_gpu_data(), filler);
-    } else {
-        tensor_fill(t.mutable_cpu_data(), filler);
-    }
+    DALI_EXECUTE_ST_FUNCTION_MUT(t, tensor_fill, filler);
 }
-
 
 
 #endif
