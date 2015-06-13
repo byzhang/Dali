@@ -6,7 +6,7 @@ set -e
 # Stop when undefined variable is ecountered
 set -u
 # Easier to debug errors
-set -o pipefail
+# set -o pipefail
 
 file=${1:-}
 if [[ -z "$file" ]]
