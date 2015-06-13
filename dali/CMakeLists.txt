@@ -15,11 +15,10 @@ if (WITH_CUDA)
                 COMMAND ${CMAKE_COMMAND} -E copy ${DaliCudaFile} ${NEW_FILENAME}
                 WORKING_DIRECTORY ${DaliDir}
                 DEPENDS ${DaliCudaFile})
+        list(REMOVE_ITEM DaliSources ${DaliCudaFile})
         list(APPEND DaliCudaSources ${NEW_FILENAME})
     endforeach(DaliCudaFile)
     # also remove sources from C compilation
-    list(REMOVE_ITEM DaliSources ${DaliMaybeCudaSources})
-
 
     SET(OLD_CXX_FLAGS ${CMAKE_CXX_FLAGS})
     SET(CMAKE_CXX_FLAGS "-O3 -w -fPIC ${CUDA_EXTRA_FLAGS}")
@@ -43,6 +42,8 @@ foreach(header ${DaliTemplates})
         DEPENDS ${header})
 endforeach(header)
 
+message(DaliSources "${DaliSources}")
+
 add_library(dali
         ${DaliSources}
         ${DaliHeaders}
@@ -63,16 +64,20 @@ endif (BLAS_FOUND AND MKL_FOUND)
 target_link_libraries(dali ${ZLIB_LIBRARIES}
                            proto
                            SQLiteCpp
-                           redox_static
                            sqlite3
                            json11static
                            ${BLAS_LIBRARIES}
-                           ${HIREDIS_LIBRARIES}
                            ${MKL_LIBRARIES}
                            ${GFLAGS_LIBRARIES})
+
+if (WITH_VISUALIZER)
+    target_link_libraries(dali redox_static ${HIREDIS_LIBRARIES})
+endif (WITH_VISUALIZER)
+
 if (GPERFTOOLS_FOUND)
     target_link_libraries(dali ${GPERFTOOLS_LIBRARIES})
 endif (GPERFTOOLS_FOUND)
+
 if (WITH_CUDA)
     target_link_libraries(dali dali_cuda)
 endif (WITH_CUDA)

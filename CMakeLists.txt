@@ -9,7 +9,6 @@ set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 find_package(Eigen3 REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(Gflags REQUIRED)
-find_package(HiRedis REQUIRED)
 
 # OPTIONAL PACKAGES
 find_package(GooglePerfTools)
@@ -17,6 +16,19 @@ find_package(BLAS)
 find_package(MKL)
 find_package(GTest)
 find_package(CUDA)
+find_package(HiRedis)
+
+
+if (DEFINED WITH_VISUALIZER)
+    message("WITH_VISUALIZER ${WITH_VISUALIZER}")
+else()
+    # if user did not specify if they want visualizer try to build it if possible.
+    if (HIREDIS_FOUND STREQUAL TRUE)
+        SET(WITH_VISUALIZER TRUE)
+    else()
+        SET(WITH_VISUALIZER FALSE)
+    endif()
+endif(DEFINED WITH_VISUALIZER)
 
 # CUDA BEGINS HERE
 if (DEFINED WITH_CUDA)
@@ -42,14 +54,8 @@ if (WITH_CUDA)
 else (WITH_CUDA)
     add_definitions(-DMSHADOW_USE_CUDA=0)
 endif (WITH_CUDA)
+
 # CUDA ENDS HERE
-
-
-
-if (NOT HIREDIS_FOUND)
-    message( FATAL_ERROR "ERROR: required dependency HiRedis not found.\n    > brew install hiredis")
-endif(NOT HIREDIS_FOUND)
-
 if (NOT GPERFTOOLS_FOUND)
     message("WARNING: consider installing gperftools for better multithreaded performance.\n    > brew install gperftools")
 endif(NOT GPERFTOOLS_FOUND)
@@ -101,7 +107,9 @@ endforeach(libvar)
 
 # add submodule libraries
 add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/SQLiteCpp)
-add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/redox)
+if (WITH_VISUALIZER)
+    add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/redox)
+endif(WITH_VISUALIZER)
 add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/json11)
 
 # Relative path in C++ are hard. Adding a macro:
@@ -136,10 +144,12 @@ INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/third_party/mshadow)
 include_directories(${MKL_INCLUDE_DIR})
 include_directories(${EIGEN3_INCLUDE_DIR})
 include_directories(${PROJECT_SOURCE_DIR})
-include_directories(${HIREDIS_INCLUDE_DIRS})
+if (WITH_VISUALIZER)
+    include_directories(${HIREDIS_INCLUDE_DIRS})
+    include_directories(${PROJECT_SOURCE_DIR}/third_party/redox/include)
+endif(WITH_VISUALIZER)
 include_directories(${GFLAGS_INCLUDE_DIRS})
 include_directories(${PROJECT_SOURCE_DIR}/third_party/SQLiteCpp/include)
-include_directories(${PROJECT_SOURCE_DIR}/third_party/redox/include)
 include_directories(${PROJECT_SOURCE_DIR}/third_party/json11)
 
 if (GPERFTOOLS_FOUND)
