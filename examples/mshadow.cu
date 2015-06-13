@@ -1,6 +1,10 @@
 #include <iostream>
 #include "mshadow/tensor.h"
 #include "assert.h"
+#include <thrust/device_vector.h>
+#include <thrust/host_vector.h>
+#include <thrust/equal.h>
+#include <thrust/iterator/detail/normal_iterator.h>
 
 using namespace mshadow;
 
@@ -40,6 +44,12 @@ void Print2DTensor(Tensor<gpu, 2, float> const &tg) {
     Copy(tc, tg);
     Print2DTensor(tc);
     FreeSpace(&tc);
+}
+
+
+thrust::device_ptr<float> to_thrust(Tensor<gpu, 2, float>& tg) {
+    auto dev_ptr = thrust::device_pointer_cast(tg.dptr_);
+    return dev_ptr;
 }
 
 #define PRINT2D_SMALL(X) if ((X).shape_[0] <= 20 && (X).shape_[1] <= 20) Print2DTensor((X))
@@ -86,14 +96,23 @@ int main () {
     Tensor<cpu, 2, float> A = NewTensor<cpu, float>(Shape2(5, 5), 0.2f);
     Tensor<cpu, 2, float> B = NewTensor<cpu, float>(Shape2(5, 5), 0.3f);
     auto bob = NewTensor<cpu, float>(Shape2(5, 5), 0.0f);
-
     auto joe = NewTensor<gpu, float>(Shape2(5, 5), 0.0f);
-
-
 
     std::cout << "expected => " <<  0.2 + 0.3 + 0.3 * 2.0 + 0.2 * 0.3 + 1.0 << std::endl;
     bob = A + B + B * 2.0 + A * B + 1.0;
     Copy(joe, bob);
+
+    auto joe_ptr = to_thrust(joe);
+
+    int ymax = joe.shape_.shape_[0] * joe.shape_.shape_[1];
+
+    auto are_equal = thrust::equal(
+        joe_ptr,
+        joe_ptr + ymax,
+        joe_ptr
+    );
+
+    std::cout << "joe equals bob = " << (are_equal ? "true" : "false") << std::endl;
 
     //bob += B;
 
