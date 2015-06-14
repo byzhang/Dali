@@ -4,8 +4,11 @@
 #include <vector>
 #include <string>
 #include <sstream>
-#include "dali/mat/Index.h"
 #include "dali/utils.h"
+
+namespace Indexing {
+    class Index;
+}
 
 class ReconstructModel {
     public:

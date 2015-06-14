@@ -41,6 +41,10 @@ enum PreferredDevice {
         bool prefers_gpu() const;
 
         SynchronizedTensor& operator=(const SynchronizedTensor&) = delete;
+
+        // tie-breaker for operations involving multiple tensors
+        // on mixed devices.
+        static PreferredDevice tie_breaker_device;
       private:
         void to_gpu() const;
         void to_cpu() const;

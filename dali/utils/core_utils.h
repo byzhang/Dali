@@ -30,11 +30,14 @@
 #include "SQLiteCpp/Database.h"
 
 // need to include Index for typedef eigen_index_segment
-#include "dali/mat/Index.h"
 
 #include "dali/utils/gzstream.h"
 #include "protobuf/corpus.pb.h"
 #include "dali/utils/ThreadPool.h"
+
+namespace Indexing {
+    class Index;
+}
 
 // MACRO DEFINITIONS
 #define ELOG(EXP) std::cout << #EXP "\t=\t" << (EXP) << std::endl

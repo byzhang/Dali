@@ -7,7 +7,6 @@
 #ifdef DALI_USE_CUDA
 #include <thrust/equal.h>
 #endif
-#include "dali/mat/Index.h"
 #include "dali/mat/Mat.h"
 #include "dali/mat/Tape.h"
 #include "dali/mat/Mat.h"
@@ -16,6 +15,7 @@
 typedef unsigned int dim_t;
 
 template<typename R> class Mat;
+
 namespace Indexing {
     class Index;
 }

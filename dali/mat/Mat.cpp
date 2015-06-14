@@ -1,4 +1,5 @@
 #include "dali/mat/Mat.h"
+#include "dali/mat/Index.h"
 
 using std::vector;
 using std::string;

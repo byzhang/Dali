@@ -1,4 +1,5 @@
 #include "dali/data_processing/SST.h"
+#include "dali/mat/Index.h"
 
 using std::string;
 using std::vector;

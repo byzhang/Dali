@@ -13,7 +13,6 @@
 // For handling json_finite_distribution
 #include <json11.hpp>
 
-#include "dali/mat/Index.h"
 #include "dali/mat/math/MatInternal.h"
 #include "dali/mat/math/MatOps.h"
 #include "dali/mat/math/Weights.h"
@@ -22,6 +21,10 @@
 
 
 template<typename R> class Mat;
+
+namespace Indexing {
+    class Index;
+}
 
 template<typename R>
 struct weights;

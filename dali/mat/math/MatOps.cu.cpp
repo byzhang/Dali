@@ -1,4 +1,4 @@
-#include "MatOps.h"
+#include "dali/mat/math/MatOps.h"
 #include "dali/mat/math/__MatMacros__.h"
 
 
@@ -12,6 +12,14 @@ template<typename R>
 R MatOps<R>::EPS = 1e-9;
 
 #define DONT_COMPILE
+
+namespace Indexing {
+    typedef uint ind_t;
+    class Index {
+        ind_t& operator[](std::size_t idx);
+        ind_t  operator[](std::size_t idx) const;
+    };
+}
 
 template<typename R>
 Mat<R> MatOps<R>::eltmul_broadcast(
@@ -1846,7 +1854,8 @@ bool MatOps<R>::equals(Mat<R> a, Mat<R> b) {
         // do comparison on cpu
         auto& a_cpu_data = DALI_MAT_ST(a).cpu_data();
         auto& b_cpu_data = DALI_MAT_ST(b).cpu_data();
-        return a_cpu_data == b_cpu_data;
+        // return a_cpu_data == b_cpu_data;
+        return false;
     #ifdef DALI_USE_CUDA
     }
     #endif
@@ -1890,13 +1899,24 @@ bool MatOps<R>::almost_equals(Mat<R> a, Mat<R> b, R tol) {
     if (DALI_MAT_ST(a).gpu_fresh && DALI_MAT_ST(b).gpu_fresh) {
         auto ptr_a = DALI_MAT_ST(a).gpu_data().dptr_;
         auto ptr_b = DALI_MAT_ST(b).gpu_data().dptr_;
-        return thrust::equal(ptr_a, ptr_a + a.number_of_elements(), ptr_b, near_equal(tol));
+        return thrust::equal(
+            ptr_a,
+            ptr_a + a.number_of_elements(),
+            ptr_b,
+            near_equal<R>(tol));
     } else {
     #endif
         // do comparison on cpu
-        auto& a_cpu_data = DALI_MAT_ST(a).cpu_data();
-        auto& b_cpu_data = DALI_MAT_ST(b).cpu_data();
-        return a_cpu_data == b_cpu_data;
+        auto& ptr_a = DALI_MAT_ST(a).cpu_data().dptr_;
+        auto& ptr_b = DALI_MAT_ST(b).cpu_data().dptr_;
+        // return a_cpu_data == b_cpu_data;
+        return std::equal(
+            ptr_a,
+            ptr_a + number_of_elements(),
+            ptr_b.dptr_,
+            [](const T &lhs, const T &rhs) {
+                return std::fabs(lhs - rhs) < tol;
+            });
     #ifdef DALI_USE_CUDA
     }
     #endif

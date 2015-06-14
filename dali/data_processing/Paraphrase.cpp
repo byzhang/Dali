@@ -1,4 +1,5 @@
 #include "dali/data_processing/Paraphrase.h"
+#include "dali/mat/Index.h"
 
 using namespace std::placeholders;
 using std::vector;

@@ -7,7 +7,7 @@ using mshadow::Tensor;
 using mshadow::Copy;
 
 template<typename R>
-SynchronizedTensor<R>::SynchronizedTensor(int n, int d, PreferredDevice _preferred_device) :
+SynchronizedTensor<R>::SynchronizedTensor(int n, int d, PreferredDevice preferred_device) :
 #ifdef DALI_USE_CUDA
     mem_gpu(Shape2(n, d)),
     gpu_fresh(false),
@@ -39,9 +39,15 @@ SynchronizedTensor<R>::SynchronizedTensor(const SynchronizedTensor& other) :
         // so we also choose not to initialize.
         return;
     }
-
 }
 
+#ifdef DALI_USE_CUDA
+    template<typename R>
+    PreferredDevice SynchronizedTensor<R>::tie_breaker_device = DEVICE_GPU;
+#else
+    template<typename R>
+    PreferredDevice SynchronizedTensor<R>::tie_breaker_device = DEVICE_CPU;
+#endif
 
 template<typename R>
 SynchronizedTensor<R>::~SynchronizedTensor() {
