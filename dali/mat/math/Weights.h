@@ -1,7 +1,6 @@
 #ifndef DALI_MAT_MATH_WEIGHTS_H
 #define DALI_MAT_MATH_WEIGHTS_H
 
-#include <Eigen/Eigen>
 #include <functional>
 
 #include "dali/mat/Mat.h"

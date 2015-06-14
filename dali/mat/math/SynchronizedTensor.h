@@ -22,10 +22,10 @@ enum PreferredDevice {
       private:
         mutable mshadow::Tensor<mshadow::cpu, 2, R> mem_cpu;
         mutable mshadow::Tensor<mshadow::gpu, 2, R> mem_gpu;
-        mutable bool cpu_fresh;
-        mutable bool gpu_fresh;
         PreferredDevice preferred_device;
       public:
+        mutable bool cpu_fresh;
+        mutable bool gpu_fresh;
         SynchronizedTensor(int n, int d, PreferredDevice preferred_device);
         // inherits preferred device and copies memory to it.
         SynchronizedTensor(const SynchronizedTensor& other);

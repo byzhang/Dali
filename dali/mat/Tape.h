@@ -9,7 +9,7 @@ namespace graph {
 
     void backward();
 
-    extern thread_local bool backprop_enabled;
+    bool backprop_enabled();
 
     class Tape {
         public:
@@ -17,8 +17,6 @@ namespace graph {
 
             void backward ();
     };
-
-    extern thread_local Tape tape;
 
     class NoBackprop {
         private:

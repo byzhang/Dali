@@ -1,7 +1,7 @@
 #include "Tape.h"
 
 namespace graph {
-    thread_local bool backprop_enabled = true;
+    thread_local bool _backprop_enabled = true;
     thread_local Tape tape;
 
     void emplace_back(std::function<void()>&& f) {
@@ -10,6 +10,10 @@ namespace graph {
 
     void backward() {
         tape.backward();
+    }
+
+    bool backprop_enabled() {
+        return _backprop_enabled;
     }
 
 
@@ -25,14 +29,14 @@ namespace graph {
     NoBackprop::NoBackprop() : NoBackprop(true) {
     }
 
-    NoBackprop::NoBackprop(bool condition) : old_value(backprop_enabled), enabled(condition) {
+    NoBackprop::NoBackprop(bool condition) : old_value(_backprop_enabled), enabled(condition) {
         if(enabled)
-            backprop_enabled = false;
+            _backprop_enabled = false;
     }
 
     NoBackprop::~NoBackprop() {
         if (enabled)
-            backprop_enabled = old_value;
+            _backprop_enabled = old_value;
     }
 
 }

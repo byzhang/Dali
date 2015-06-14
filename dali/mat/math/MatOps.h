@@ -4,7 +4,9 @@
 #include <initializer_list>
 #include <vector>
 #include <memory>
-#include <Eigen/Eigen>
+#ifdef DALI_USE_CUDA
+#include <thrust/equal.h>
+#endif
 #include "dali/mat/Index.h"
 #include "dali/mat/Mat.h"
 #include "dali/mat/Tape.h"
@@ -45,8 +47,6 @@ namespace Indexing {
 template<typename R>
 struct MatOps {
     static R EPS;
-
-    typedef Eigen::Matrix<R, Eigen::Dynamic, Eigen::Dynamic> eigen_mat;
 
     static Mat<R> eltmul_broadcast(Mat<R>, Mat<R>);
     static Mat<R> eltdivide_broadcast(Mat<R>, Mat<R>);
@@ -268,6 +268,8 @@ struct MatOps {
     static Mat<R> fill(Mat<R>, R);
     static Mat<R> sqrt(Mat<R>);
     static Mat<R> elt_inv(Mat<R>);
+    static bool   equals(Mat<R> a, Mat<R> b);
+    static bool   almost_equals(Mat<R> a, Mat<R> b, R tol);
     static Mat<R> conv2d(Mat<R> image, Mat<R> kernel);
     static Mat<R> conv1d(Mat<R> image, Mat<R> kernel);
     static Mat<R> conv1d(Mat<R> image, Mat<R> kernel, bool pad);

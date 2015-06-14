@@ -1830,5 +1830,77 @@ int MatOps<R>::argmax_slice(const Mat<R>& mat, int lower, int upper) {
     #endif
 }
 
+template<typename R>
+bool MatOps<R>::equals(Mat<R> a, Mat<R> b) {
+    // wrong dimensions
+    if (a.dims() != b.dims())
+        return false;
+    // both on gpu
+    #ifdef DALI_USE_CUDA
+    if (DALI_MAT_ST(a).gpu_fresh && DALI_MAT_ST(b).gpu_fresh) {
+        auto ptr_a = DALI_MAT_ST(a).gpu_data().dptr_;
+        auto ptr_b = DALI_MAT_ST(b).gpu_data().dptr_;
+        return thrust::equal(ptr_a, ptr_a + a.number_of_elements(), ptr_b);
+    } else {
+    #endif
+        // do comparison on cpu
+        auto& a_cpu_data = DALI_MAT_ST(a).cpu_data();
+        auto& b_cpu_data = DALI_MAT_ST(b).cpu_data();
+        return a_cpu_data == b_cpu_data;
+    #ifdef DALI_USE_CUDA
+    }
+    #endif
+}
+
+#ifdef DALI_USE_CUDA
+template<typename T>
+struct near_equal {
+    T tol;
+    near_equal(T _tol) : tol(_tol) {}
+    /*! \typedef first_argument_type
+     *  \brief The type of the function object's first argument.
+     */
+    typedef T first_argument_type;
+
+    /*! \typedef second_argument_type
+     *  \brief The type of the function object's second argument.
+     */
+    typedef T second_argument_type;
+
+    /*! \typedef result_type
+     *  \brief The type of the function object's result;
+     */
+    typedef bool result_type;
+
+    /*! Function call operator. The return value is <tt>abs(lhs - rhs) < tol</tt>.
+     */
+    __host__ __device__ bool operator()(const T &lhs, const T &rhs) const {
+        return std::fabs(lhs - rhs) < tol;
+    }
+};
+#endif
+
+template<typename R>
+bool MatOps<R>::almost_equals(Mat<R> a, Mat<R> b, R tol) {
+    // wrong dimensions
+    if (a.dims() != b.dims())
+        return false;
+    // both on gpu
+    #ifdef DALI_USE_CUDA
+    if (DALI_MAT_ST(a).gpu_fresh && DALI_MAT_ST(b).gpu_fresh) {
+        auto ptr_a = DALI_MAT_ST(a).gpu_data().dptr_;
+        auto ptr_b = DALI_MAT_ST(b).gpu_data().dptr_;
+        return thrust::equal(ptr_a, ptr_a + a.number_of_elements(), ptr_b, near_equal(tol));
+    } else {
+    #endif
+        // do comparison on cpu
+        auto& a_cpu_data = DALI_MAT_ST(a).cpu_data();
+        auto& b_cpu_data = DALI_MAT_ST(b).cpu_data();
+        return a_cpu_data == b_cpu_data;
+    #ifdef DALI_USE_CUDA
+    }
+    #endif
+}
+
 template class MatOps<float>;
 template class MatOps<double>;
