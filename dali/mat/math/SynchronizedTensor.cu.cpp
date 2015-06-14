@@ -141,5 +141,17 @@ void SynchronizedTensor<R>::copy_data_from(SourceType& data_source) {
     }
 }
 
+#ifdef DALI_USE_CUDA
+bool should_compute_on_gpu(SynchronizedTensor& ts, ...) {
+    va_list args;
+    va_start(args, ts);
+    bool preference = true;
+}
+#else
+bool should_compute_on_gpu(SynchronizedTensor& ts, ...) {
+    return false;
+}
+#endif
+
 template class SynchronizedTensor<float>;
 template class SynchronizedTensor<double>;
