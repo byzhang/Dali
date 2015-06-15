@@ -112,7 +112,7 @@ bool gradient_same(
         std::function<Mat<R>(std::vector<Mat<R>>&)> functor,
         std::vector<Mat<R>> arguments,
         R tolerance    = 1e-5,
-        R grad_epsilon = 1e-9) {
+        R grad_epsilon = 1e-5) {
 
     auto error = functor(arguments).sum();
     error.grad();
@@ -125,16 +125,14 @@ bool gradient_same(
 
     for (auto& arg : arguments) {
         R  Arg_prime[arg.number_of_elements()];
-        R* arg_buffer = arg.w()->data();
         for (int i = 0; i < arg.number_of_elements(); i++) {
-            auto prev_val     = arg_buffer[i];
-            arg_buffer[i]     = prev_val +  grad_epsilon;
-            auto obj_positive = MatOps<R>::consider_constant(functor(arguments)).sum().w(0);
-            arg_buffer[i]     = prev_val - grad_epsilon;
-            auto obj_negative = MatOps<R>::consider_constant(functor(arguments)).sum().w(0);
-
-            arg_buffer[i]     = prev_val;
-            Arg_prime[i]      = (obj_positive - obj_negative) / (2.0 * grad_epsilon);
+            const auto prev_val = arg.w(i);
+            arg.w(i)            = prev_val +  grad_epsilon;
+            auto obj_positive   = functor(arguments).sum().w(0);
+            arg.w(i)            = prev_val - grad_epsilon;
+            auto obj_negative   = functor(arguments).sum().w(0);
+            arg.w(i)            = prev_val;
+            Arg_prime[i]        = (obj_positive - obj_negative) / (2.0 * grad_epsilon);
         }
         AssertionResult did_work_out = buffer_almost_equals(
                 (R*)Arg_prime,
@@ -295,6 +293,17 @@ TEST_F(MatrixTests, addition_gradient) {
     }
 }
 
+
+TEST_F(MatrixTests, mean_gradient) {
+    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+        return Xs[0].mean();
+    };
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
+        ASSERT_TRUE(gradient_same(functor, {A}));
+    }
+}
+
 /*
 TEST_F(MatrixTests, addition_broadcast_gradient) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
@@ -304,16 +313,6 @@ TEST_F(MatrixTests, addition_broadcast_gradient) {
         auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
         auto B = Mat<R>(10, 1,  weights<R>::uniform(0.5));
         ASSERT_TRUE(gradient_same(functor, {A, B}));
-    }
-}
-
-TEST_F(MatrixTests, mean_gradient) {
-    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-        return Xs[0].mean();
-    };
-    EXPERIMENT_REPEAT {
-        auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
-        ASSERT_TRUE(gradient_same(functor, {A}));
     }
 }
 

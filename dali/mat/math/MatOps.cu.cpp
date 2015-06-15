@@ -801,6 +801,8 @@ void add_inplace_helper(Tensor<Device,ndims,R> a, int num_elts, R summand) {
 
 template<typename R>
 Mat<R> MatOps<R>::sum(Mat<R> matrix) {
+    if (matrix.dims(0) == 1 && matrix.dims(1) == 1)
+        return matrix;
     Mat<R> out (1,1, false);
     out.w(0) = DALI_FUNCTION_1(sum_helper, MAT(matrix), matrix.number_of_elements());
     if (backprop_enabled() && !matrix.constant)
