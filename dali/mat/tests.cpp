@@ -18,7 +18,12 @@ typedef float R;
 typedef double R;
 #endif
 
-#define NUM_RETRIES 10
+#ifdef DALI_USE_CUDA
+    // numeric gradient is slow on GPU.
+    #define NUM_RETRIES 2
+#else
+    #define NUM_RETRIES 10
+#endif
 #define EXPERIMENT_REPEAT for(int __repetition=0; __repetition < NUM_RETRIES; ++__repetition)
 
 template<typename T>

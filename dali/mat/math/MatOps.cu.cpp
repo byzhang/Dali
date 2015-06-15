@@ -7,9 +7,6 @@ using std::vector;
 using std::string;
 using utils::assert2;
 using utils::MS;
-using mshadow::Tensor;
-using mshadow::cpu;
-using mshadow::gpu;
 using utils::LambdaOperator;
 using graph::backprop_enabled;
 using graph::emplace_back;
@@ -776,37 +773,16 @@ Mat<R> MatOps<R>::steep_sigmoid(Mat<R> matrix, R aggressiveness) {
 }
 
 
-template<typename Device, int ndims, typename R>
-R sum_helper(const Tensor<Device,ndims,R>& a, int num_elts);
-
-#ifdef DALI_USE_CUDA
-template<int ndims, typename R>
-R sum_helper(const Tensor<gpu,ndims,R>& a, int num_elts) {
-    return thrust::reduce(to_thrust(a), to_thrust(a) + num_elts, 0.0, thrust::plus<R>());
-}
-#endif
-
-template<int ndims, typename R>
-R sum_helper(const Tensor<cpu,ndims,R>& a, int num_elts) {
-    return std::accumulate(a.dptr_, a.dptr_ + num_elts, 0.0);
-}
-
-
-
-template<typename Device, int ndims, typename R>
-void add_inplace_helper(Tensor<Device,ndims,R> a, int num_elts, R summand) {
-    a += scalar<R>(summand);
-}
 
 template<typename R>
 Mat<R> MatOps<R>::sum(Mat<R> matrix) {
     if (matrix.dims(0) == 1 && matrix.dims(1) == 1)
         return matrix;
     Mat<R> out (1,1, false);
-    out.w(0) = DALI_FUNCTION_1(sum_helper, MAT(matrix), matrix.number_of_elements());
+    out.w(0) = DALI_FUNCTION_1(TensorOps::sum, MAT(matrix), matrix.number_of_elements());
     if (backprop_enabled() && !matrix.constant)
         emplace_back([matrix, out](){
-            DALI_FUNCTION_1_MUT(add_inplace_helper,
+            DALI_FUNCTION_1_MUT(TensorOps::add_inplace,
                                 GRAD(matrix),
                                 matrix.number_of_elements(),
                                 out.dw(0));
@@ -818,10 +794,10 @@ template<typename R>
 Mat<R> MatOps<R>::mean(Mat<R> matrix) {
     Mat<R> out (1,1, false);
     auto ne = matrix.number_of_elements();
-    out.w(0) = DALI_FUNCTION_1(sum_helper, MAT(matrix), ne) / ne;
+    out.w(0) = DALI_FUNCTION_1(TensorOps::sum, MAT(matrix), ne) / ne;
     if (backprop_enabled() && !matrix.constant)
         emplace_back([matrix, out, ne](){
-            DALI_FUNCTION_1_MUT(add_inplace_helper,
+            DALI_FUNCTION_1_MUT(TensorOps::add_inplace,
                                 GRAD(matrix),
                                 ne,
                                 out.dw(0) / ne);
@@ -1864,21 +1840,6 @@ int MatOps<R>::argmax_slice(const Mat<R>& mat, int lower, int upper) {
 }
 
 
-template<typename Device, int ndims, typename R>
-bool equals_helper(const Tensor<Device,ndims,R>& a, const Tensor<Device,ndims,R>& b, int num_elts);
-
-#ifdef DALI_USE_CUDA
-    template<int ndims, typename R>
-    bool equals_helper(const Tensor<gpu,ndims,R>& a, const Tensor<gpu,ndims,R>& b, int num_elts) {
-        return thrust::equal(to_thrust(a), to_thrust(a) + num_elts, to_thrust(b));
-    }
-#endif
-
-template<int ndims, typename R>
-bool equals_helper(const Tensor<cpu,ndims,R>& a, const Tensor<cpu,ndims,R>& b, int num_elts) {
-
-    return std::equal(a.dptr_, a.dptr_ + num_elts, b.dptr_);
-}
 
 template<typename R>
 bool MatOps<R>::equals(Mat<R> a, Mat<R> b) {
@@ -1886,45 +1847,21 @@ bool MatOps<R>::equals(Mat<R> a, Mat<R> b) {
     if (a.dims() != b.dims())
         return false;
 
-    return DALI_FUNCTION_2(equals_helper, MAT(a), MAT(b), a.number_of_elements());
-}
-
-
-
-
-template<typename Device, int ndims, typename R>
-bool allclose_helper(const Tensor<Device,ndims,R>& a, const Tensor<Device,ndims,R>& b, int num_elts, R tol);
-
-#ifdef DALI_USE_CUDA
-template<int ndims, typename R>
-bool allclose_helper(const Tensor<gpu,ndims,R>& a, const Tensor<gpu,ndims,R>& b, int num_elts, R tol) {
-    return thrust::equal(to_thrust(a),
-                         to_thrust(a) + num_elts,
-                         to_thrust(b),
-                         near_equal<R>(tol));
-}
-#endif
-
-template<int ndims, typename R>
-bool allclose_helper(const Tensor<cpu,ndims,R>& a, const Tensor<cpu,ndims,R>& b, int num_elts, R tol) {
-    return std::equal(a.dptr_, a.dptr_ + num_elts, b.dptr_,
-            [tol](const R &lhs, const R &rhs) {
-                return std::fabs(lhs - rhs) < tol;
-            });
+    return DALI_FUNCTION_2(TensorOps::equals, MAT(a), MAT(b), a.number_of_elements());
 }
 
 template<typename R>
 bool MatOps<R>::allclose(Mat<R> a, Mat<R> b, R tol) {
     if (a.dims() != b.dims())
         return false;
-    return DALI_FUNCTION_2(allclose_helper, MAT(a), MAT(b), a.number_of_elements(), tol);
+    return DALI_FUNCTION_2(TensorOps::allclose, MAT(a), MAT(b), a.number_of_elements(), tol);
 }
 
 template<typename R>
 bool MatOps<R>::grad_allclose(Mat<R> a, Mat<R> b, R tol) {
     if (a.dims() != b.dims())
         return false;
-    return DALI_FUNCTION_2(allclose_helper, GRAD(a), GRAD(b), a.number_of_elements(), tol);
+    return DALI_FUNCTION_2(TensorOps::allclose, GRAD(a), GRAD(b), a.number_of_elements(), tol);
 }
 
 
