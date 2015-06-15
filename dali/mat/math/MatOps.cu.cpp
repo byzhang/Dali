@@ -1,6 +1,6 @@
 #include "dali/mat/math/MatOps.h"
 #include "dali/mat/math/__MatMacros__.h"
-
+#include "dali/mat/math/CudaUtils.h"
 
 using std::vector;
 using std::string;
@@ -10,6 +10,10 @@ using mshadow::Tensor;
 using mshadow::cpu;
 using mshadow::gpu;
 using utils::LambdaOperator;
+using graph::backprop_enabled;
+using graph::emplace_back;
+using mshadow::expr::ExpEngine;
+using mshadow::expr::scalar;
 
 template<typename R>
 R MatOps<R>::EPS = 1e-9;
@@ -767,34 +771,58 @@ Mat<R> MatOps<R>::steep_sigmoid(Mat<R> matrix, R aggressiveness) {
     #endif
 }
 
+
+template<typename Device, int ndims, typename R>
+R sum_helper(const Tensor<Device,ndims,R>& a, int num_elts);
+
+#ifdef DALI_USE_CUDA
+template<int ndims, typename R>
+R sum_helper(const Tensor<gpu,ndims,R>& a, int num_elts) {
+    return thrust::reduce(to_thrust(a), to_thrust(a) + num_elts, 0.0, thrust::plus<R>());
+}
+#endif
+
+template<int ndims, typename R>
+R sum_helper(const Tensor<cpu,ndims,R>& a, int num_elts) {
+    return std::accumulate(a.dptr_, a.dptr_ + num_elts, 0.0);
+}
+
+
+
+template<typename Device, int ndims, typename R>
+void add_inplace_helper(Tensor<Device,ndims,R> a, int num_elts, R summand) {
+    a += scalar<R>(summand);
+}
+
 template<typename R>
 Mat<R> MatOps<R>::sum(Mat<R> matrix) {
     Mat<R> out (1,1, false);
-    /*MAT(out)(0) = MAT(matrix).array().sum();
-    if (graph::backprop_enabled)
-        graph::emplace_back([matrix, out]() {
-            SAFE_GRAD(matrix).array() += GRAD(out)(0);
-        });*/
+    out.w(0) = DALI_FUNCTION_1(sum_helper, MAT(matrix), matrix.number_of_elements());
+    if (backprop_enabled() && !matrix.constant)
+        emplace_back([matrix, out](){
+            DALI_FUNCTION_1_MUT(add_inplace_helper,
+                                GRAD(matrix),
+                                matrix.number_of_elements(),
+                                out.dw(0));
+        });
     return out;
 }
-
 
 template<typename R>
 Mat<R> MatOps<R>::mean(Mat<R> matrix) {
-    #ifndef DONT_COMPILE
     Mat<R> out (1,1, false);
-    MAT(out)(0) = MAT(matrix).array().mean();
-    if (graph::backprop_enabled)
-        graph::emplace_back([matrix, out](){
-            SAFE_GRAD(matrix).array() += (1.0 / (matrix.number_of_elements())) * GRAD(out)(0);
+    auto ne = matrix.number_of_elements();
+    out.w(0) = DALI_FUNCTION_1(sum_helper, MAT(matrix), ne) / ne;
+    if (backprop_enabled() && !matrix.constant)
+        emplace_back([matrix, out, ne](){
+            DALI_FUNCTION_1_MUT(add_inplace_helper,
+                                GRAD(matrix),
+                                ne,
+                                out.dw(0) / ne);
         });
+
     return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
 }
-
-
 
 template<typename R>
 Mat<R> MatOps<R>::sigmoid_binary_cross_entropy(Mat<R> matrix, R t) {
@@ -1837,13 +1865,6 @@ int MatOps<R>::argmax_slice(const Mat<R>& mat, int lower, int upper) {
     #endif
 }
 
-#ifdef DALI_USE_CUDA
-    template<typename R, int ndims>
-    thrust::device_ptr<R> to_thrust(const Tensor<gpu, ndims, R>& tg) {
-        auto dev_ptr = thrust::device_pointer_cast(tg.dptr_);
-        return dev_ptr;
-    }
-#endif
 
 template<typename Device, int ndims, typename R>
 bool equals_helper(const Tensor<Device,ndims,R>& a, const Tensor<Device,ndims,R>& b, int num_elts);
@@ -1877,15 +1898,6 @@ template<typename Device, int ndims, typename R>
 bool allclose_helper(const Tensor<Device,ndims,R>& a, const Tensor<Device,ndims,R>& b, int num_elts, R tol);
 
 #ifdef DALI_USE_CUDA
-template<typename T>
-struct near_equal {
-    T tol;
-    near_equal(T _tol) : tol(_tol) {}
-    __host__ __device__ bool operator()(const T &lhs, const T &rhs) const {
-        return std::fabs(lhs - rhs) < tol;
-    }
-};
-
 template<int ndims, typename R>
 bool allclose_helper(const Tensor<gpu,ndims,R>& a, const Tensor<gpu,ndims,R>& b, int num_elts, R tol) {
     return thrust::equal(a.dptr_, a.dptr_ + num_elts, b.dptr_, near_equal<R>(tol));

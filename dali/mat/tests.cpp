@@ -67,7 +67,8 @@ AssertionResult buffer_almost_equals(T* buffer1, T* buffer2, uint size1, uint si
 #endif
 
 class MatrixTests : public MemorySafeTest {
-    virtual void SetUp() {
+  protected:
+    static void SetUpTestCase() {
         dali_init();
     }
 };
@@ -81,7 +82,30 @@ a finite difference estimation of the gradient
 over each argument to a functor.
 
 **/
-template<typename R>
+
+
+void expect_computation_on_gpu(
+        std::function<Mat<R>(std::vector<Mat<R>>&)> functor,
+        std::vector<Mat<R>> arguments) {
+    graph::NoBackprop nb;
+    auto res = functor(arguments);
+    EXPECT_MAT_ON_GPU(res);
+    for (auto& arg: arguments) {
+        EXPECT_MAT_ON_GPU(arg);
+    }
+}
+
+void expect_args_remain_on_gpu(
+        std::function<Mat<R>(std::vector<Mat<R>>&)> functor,
+        std::vector<Mat<R>> arguments) {
+    graph::NoBackprop nb;
+    auto res = functor(arguments);
+    for (auto& arg: arguments) {
+        EXPECT_MAT_ON_GPU(arg);
+    }
+}
+
+
 bool gradient_same(
         std::function<Mat<R>(std::vector<Mat<R>>&)> functor,
         std::vector<Mat<R>> arguments,
@@ -108,7 +132,7 @@ bool gradient_same(
             auto obj_negative = MatOps<R>::consider_constant(functor(arguments)).sum().w(0);
 
             arg_buffer[i]     = prev_val;
-            Arg_prime[i]      = (obj_positive.w(0) - obj_negative.w(0)) / (2.0 * grad_epsilon);
+            Arg_prime[i]      = (obj_positive - obj_negative) / (2.0 * grad_epsilon);
         }
         AssertionResult did_work_out = buffer_almost_equals(
                 (R*)Arg_prime,
@@ -133,6 +157,16 @@ bool gradient_same(
     return worked_out;
 }
 
+TEST_F(MatrixTests, sum_test) {
+    auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
+    auto res = A.sum();
+    R sum = 0.0;
+    for (int i = 0; i < A.number_of_elements(); ++i) {
+        sum += A.w(i);
+    }
+    ASSERT_NEAR(sum, res.w(0), 1e-4);
+}
+
 
 TEST_F(MatrixTests, equals) {
     auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
@@ -146,19 +180,22 @@ TEST_F(MatrixTests, equals) {
 
 }
 
-/*
+
 TEST_F(MatrixTests, sum_gradient) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0].sum();
     };
+
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
-        ASSERT_TRUE(gradient_same<R>(functor, {A}));
+        expect_args_remain_on_gpu(functor, {A});
+        EXPECT_TRUE(gradient_same(functor, {A}));
     }
+
 }
 
 
-
+/*
 TEST_F(MatrixTests, recursive_sum) {
     auto functor = [](vector<Mat<R>>& Xs)-> Mat<R> {
         auto doubled = Xs[0] + Xs[0];
@@ -166,7 +203,7 @@ TEST_F(MatrixTests, recursive_sum) {
     };
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
-        ASSERT_TRUE(gradient_same<R>(functor, {A}, 1e-2));
+        ASSERT_TRUE(gradient_same(functor, {A}, 1e-2));
     }
 }
 
@@ -182,7 +219,7 @@ TEST_F(MatrixTests, inplace_sum) {
             A_temp += B_temp;
             return A_temp;
         };
-        ASSERT_TRUE(gradient_same<R>(functor, {A, B}, 1e-2));
+        ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-2));
     }
 }
 
@@ -197,7 +234,7 @@ TEST_F(MatrixTests, inplace_substract) {
             A_temp -= B_temp;
             return A_temp;
         };
-        ASSERT_TRUE(gradient_same<R>(functor, {A, B}, 1e-2));
+        ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-2));
     }
 }
 
@@ -212,7 +249,7 @@ TEST_F(MatrixTests, inplace_divide) {
             A_temp /= B_temp;
             return A_temp;
         };
-        ASSERT_TRUE(gradient_same<R>(functor, {A, B}, 1e-2));
+        ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-2));
     }
 }
 
@@ -227,7 +264,7 @@ TEST_F(MatrixTests, inplace_multiply) {
             A_temp *= B_temp;
             return A_temp;
         };
-        ASSERT_TRUE(gradient_same<R>(functor, {A, B}, 1e-2));
+        ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-2));
     }
 }
 
@@ -240,7 +277,7 @@ TEST_F(MatrixTests, addition_gradient) {
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
         auto B = Mat<R>(10, 20,  weights<R>::uniform(0.5));
-        ASSERT_TRUE(gradient_same<R>(functor, {A, B}));
+        ASSERT_TRUE(gradient_same(functor, {A, B}));
     }
 }
 
@@ -252,7 +289,7 @@ TEST_F(MatrixTests, addition_broadcast_gradient) {
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
         auto B = Mat<R>(10, 1,  weights<R>::uniform(0.5));
-        ASSERT_TRUE(gradient_same<R>(functor, {A, B}));
+        ASSERT_TRUE(gradient_same(functor, {A, B}));
     }
 }
 
@@ -262,7 +299,7 @@ TEST_F(MatrixTests, mean_gradient) {
     };
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
-        ASSERT_TRUE(gradient_same<R>(functor, {A}));
+        ASSERT_TRUE(gradient_same(functor, {A}));
     }
 }
 
@@ -272,7 +309,7 @@ TEST_F(MatrixTests, sigmoid_gradient) {
     };
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(10, 20, weights<R>::uniform(20.0));
-        ASSERT_TRUE(gradient_same<R>(functor, {A}, 1e-4));
+        ASSERT_TRUE(gradient_same(functor, {A}, 1e-4));
     }
 }
 
@@ -282,7 +319,7 @@ TEST_F(MatrixTests, tanh_gradient) {
     };
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(10, 20, weights<R>::uniform(20.0));
-        ASSERT_TRUE(gradient_same<R>(functor, {A}, 1e-4));
+        ASSERT_TRUE(gradient_same(functor, {A}, 1e-4));
     }
 }
 
@@ -292,7 +329,7 @@ TEST_F(MatrixTests, norm_gradient) {
     };
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(10, 20, weights<R>::uniform(20.0));
-        ASSERT_TRUE(gradient_same<R>(functor, {A}, 1e-4));
+        ASSERT_TRUE(gradient_same(functor, {A}, 1e-4));
     }
 }
 
@@ -302,7 +339,7 @@ TEST_F(MatrixTests, exp_gradient) {
     };
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(10, 20, weights<R>::uniform(20.0));
-        ASSERT_TRUE(gradient_same<R>(functor, {A}, 1e-4));
+        ASSERT_TRUE(gradient_same(functor, {A}, 1e-4));
     }
 }
 
@@ -312,7 +349,7 @@ TEST_F(MatrixTests, log_gradient) {
     };
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(10, 20, weights<R>::uniform(0.001, 20.0));
-        ASSERT_TRUE(gradient_same<R>(functor, {A}, 1e-4));
+        ASSERT_TRUE(gradient_same(functor, {A}, 1e-4));
     }
 }
 
@@ -327,7 +364,7 @@ TEST_F(MatrixTests, matrix_dot_plus_bias) {
         auto X = Mat<R>(input_size, num_examples, weights<R>::uniform(20.0));
         auto W = Mat<R>(hidden_size, input_size, weights<R>::uniform(2.0));
         auto bias = Mat<R>(hidden_size, 1, weights<R>::uniform(2.0));
-        ASSERT_TRUE(gradient_same<R>(functor, {X, W, bias}, 1e-4));
+        ASSERT_TRUE(gradient_same(functor, {X, W, bias}, 1e-4));
     }
 }
 
@@ -338,7 +375,7 @@ TEST_F(MatrixTests, matrix_divide) {
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(10, 20, weights<R>::uniform(-20.0, 20.0));
         auto B = Mat<R>(10, 20, weights<R>::uniform(0.1, 20.0));
-        ASSERT_TRUE(gradient_same<R>(functor, {A, B}, 1e-4));
+        ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-4));
     }
 }
 
@@ -349,7 +386,7 @@ TEST_F(MatrixTests, matrix_divide_broadcast) {
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(10, 20, weights<R>::uniform(-20.0, 20.0));
         auto B = Mat<R>(10, 1, weights<R>::uniform(0.1, 20.0));
-        ASSERT_TRUE(gradient_same<R>(functor, {A, B}, 1e-3));
+        ASSERT_TRUE(gradient_same(functor, {A, B}, 1e-3));
     }
 }
 
@@ -361,7 +398,7 @@ TEST_F(MatrixTests, matrix_divide_scalar) {
         auto functor = [&scalar](vector<Mat<R>> Xs)-> Mat<R> {
             return Xs[0] / scalar;
         };
-        ASSERT_TRUE(gradient_same<R>(functor, {A}, 1e-3));
+        ASSERT_TRUE(gradient_same(functor, {A}, 1e-3));
     }
 }
 
@@ -373,7 +410,7 @@ TEST_F(MatrixTests, matrix_divide_scalar) {
 //     };
 //     EXPERIMENT_REPEAT {
 //         auto A = Mat<R>(10, 20, weights<R>::uniform(0.001, 20.0));
-//         ASSERT_TRUE(gradient_same<R>(functor, {A}, 1e-4));
+//         ASSERT_TRUE(gradient_same(functor, {A}, 1e-4));
 //     }
 // }
 
@@ -390,7 +427,7 @@ TEST_F(MatOpsTests, matrix_mul_with_bias) {
         auto X = Mat<R>(input_size, num_examples, weights<R>::uniform(20.0));
         auto W = Mat<R>(hidden_size, input_size, weights<R>::uniform(2.0));
         auto bias = Mat<R>(hidden_size, 1, weights<R>::uniform(2.0));
-        ASSERT_TRUE(gradient_same<R>(functor, {X, W, bias}, 1e-4));
+        ASSERT_TRUE(gradient_same(functor, {X, W, bias}, 1e-4));
     }
 }
 
@@ -408,7 +445,7 @@ TEST_F(MatOpsTests, matrix_mul_add_mul_with_bias) {
         auto W       = Mat<R>(hidden_size, input_size,        weights<R>::uniform(2.0));
         auto W_other = Mat<R>(hidden_size, other_input_size,  weights<R>::uniform(2.0));
         auto bias    = Mat<R>(hidden_size, 1,                 weights<R>::uniform(2.0));
-        ASSERT_TRUE(gradient_same<R>(functor, {W, X, W_other, X_other, bias}, 0.0003));
+        ASSERT_TRUE(gradient_same(functor, {W, X, W_other, X_other, bias}, 0.0003));
     }
 }
 
@@ -467,7 +504,7 @@ TEST_F(MatOpsTests, matrix_conv2d_grad) {
     EXPERIMENT_REPEAT {
         auto kernel = Mat<R>(5, 5, weights<R>::uniform(-20.0, 20.0));
         auto image = Mat<R>(8, 8, weights<R>::uniform(-20.0, 20.0));
-        ASSERT_TRUE(gradient_same<R>(functor, {image, kernel}, 1e-4));
+        ASSERT_TRUE(gradient_same(functor, {image, kernel}, 1e-4));
     }
 }
 
@@ -523,7 +560,7 @@ TEST_F(MatOpsTests, cross_entropy_grad) {
         temperature = utils::randdouble(0.1, 100);
         auto input = Mat<R>(5,  3, weights<R>::uniform(-2.0, 2.0));
         auto layer = Mat<R>(10, 5, weights<R>::uniform(-2.0, 2.0));
-        ASSERT_TRUE(gradient_same<R>(functor, {input, layer}, 1e-4));
+        ASSERT_TRUE(gradient_same(functor, {input, layer}, 1e-4));
     }
 }
 
@@ -535,7 +572,7 @@ TEST_F(MatOpsTests, matrix_conv1d_grad) {
         auto kernel1 = Mat<R>(5, 5, weights<R>::uniform(-20.0, 20.0));
         auto kernel2 = Mat<R>(5, 5, weights<R>::uniform(-20.0, 20.0));
         auto image = Mat<R>(5, 20, weights<R>::uniform(-20.0, 20.0));
-        ASSERT_TRUE(gradient_same<R>(functor, {image, kernel1, kernel2}, 1e-2));
+        ASSERT_TRUE(gradient_same(functor, {image, kernel1, kernel2}, 1e-2));
     }
 }
 
@@ -551,7 +588,7 @@ TEST_F(MatOpsTests, vector_softmax) {
             auto mats = MatOps<R>::softmax(matrices, temperature);
             return (mats[4] - 1.0) ^ 2;
         };
-        ASSERT_TRUE(gradient_same<R>(functor, {matrices}, 1e-4));
+        ASSERT_TRUE(gradient_same(functor, {matrices}, 1e-4));
     }
 }
 
@@ -570,7 +607,7 @@ TEST_F(LayerTests, layer_tanh_gradient) {
         auto functor = [&mylayer](vector<Mat<R>> Xs)-> Mat<R> {
             return mylayer.activate(Xs.back()).tanh();
         };
-        ASSERT_TRUE(gradient_same<R>(functor, params, 0.0003));
+        ASSERT_TRUE(gradient_same(functor, params, 0.0003));
     }
 }
 
@@ -603,7 +640,7 @@ TEST_F(LayerTests, BroadcastMultiply) {
         auto functor = [&mylayer, &inputs](vector<Mat<R>> Xs)-> Mat<R> {
             return mylayer.activate(inputs);
         };
-        ASSERT_TRUE(gradient_same<R>(functor, params, 0.0003));
+        ASSERT_TRUE(gradient_same(functor, params, 0.0003));
     }
 }
 
@@ -639,7 +676,7 @@ TEST_F(LayerTests, stacked_layer_tanh_gradient) {
         auto functor = [&mylayer, &A, &B, &C](vector<Mat<R>> Xs)-> Mat<R> {
             return mylayer.activate({A, B, C}).tanh();
         };
-        ASSERT_TRUE(gradient_same<R>(functor, params, 0.0003));
+        ASSERT_TRUE(gradient_same(functor, params, 0.0003));
     }
 }
 
@@ -659,7 +696,7 @@ TEST_F(LayerTests, LSTM_Zaremba_gradient) {
             auto myout_state = mylayer.activate(X, initial_state);
             return myout_state.hidden;
         };
-        ASSERT_TRUE(gradient_same<R>(functor, params, 0.0003));
+        ASSERT_TRUE(gradient_same(functor, params, 0.0003));
     }
 }
 
@@ -684,7 +721,7 @@ TEST_F(LayerTests, LSTM_Graves_gradient) {
             auto myout_state = mylayer.activate(X, initial_state);
             return myout_state.hidden;
         };
-        ASSERT_TRUE(gradient_same<R>(functor, params, 0.0003));
+        ASSERT_TRUE(gradient_same(functor, params, 0.0003));
     }
 }
 
@@ -712,7 +749,7 @@ TEST_F(LayerTests, LSTM_Graves_shortcut_gradient) {
             auto state = mylayer.activate_shortcut(X, X_s, initial_state);
             return state.hidden;
         };
-        ASSERT_TRUE(gradient_same<R>(functor, params, 0.0003));
+        ASSERT_TRUE(gradient_same(functor, params, 0.0003));
     }
 }
 
@@ -735,7 +772,7 @@ TEST_F(LayerTests, LSTM_Zaremba_shortcut_gradient) {
             auto state = mylayer.activate_shortcut(X, X_s, initial_state);
             return state.hidden;
         };
-        ASSERT_TRUE(gradient_same<R>(functor, params, 0.0003));
+        ASSERT_TRUE(gradient_same(functor, params, 0.0003));
     }
 }
 
@@ -880,7 +917,7 @@ TEST_F(LayerTests, multi_input_lstm_test) {
                 auto state = mylayer.activate(input, states);
                 return state.hidden;
         };
-        ASSERT_TRUE(gradient_same<R>(functor, params, 0.0003));
+        ASSERT_TRUE(gradient_same(functor, params, 0.0003));
 
         utils::Timer::report();
     }
@@ -925,7 +962,7 @@ TEST_F(LayerTests, GRU) {
                 state = gru.activate(inputs[i], state);
             return (state -1.0) ^ 2;
         };
-        ASSERT_TRUE(gradient_same<R>(functor, params, 1e-5));
+        ASSERT_TRUE(gradient_same(functor, params, 1e-5));
     }
 }
 
@@ -943,7 +980,7 @@ TEST_F(MatrixTests, powtest) {
         auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
             return Xs[0] ^ Xs[1];
         };
-        ASSERT_TRUE(gradient_same<R>(functor, {mat, exponent}, 1e-3));
+        ASSERT_TRUE(gradient_same(functor, {mat, exponent}, 1e-3));
     }
 }
 
@@ -961,7 +998,7 @@ TEST_F(MatrixTests, quadratic_form) {
         auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
             return MatOps<R>::quadratic_form(Xs[0], Xs[1], Xs[2]);
         };
-        ASSERT_TRUE(gradient_same<R>(functor, {left, middle, right}, 1e-3));
+        ASSERT_TRUE(gradient_same(functor, {left, middle, right}, 1e-3));
     }
 }
 
@@ -976,7 +1013,7 @@ TEST_F(MatrixTests, abs) {
         auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
             return MatOps<R>::hstack(Xs).abs();
         };
-        ASSERT_TRUE(gradient_same<R>(functor, {mat, mat2}, 1e-4));
+        ASSERT_TRUE(gradient_same(functor, {mat, mat2}, 1e-4));
     }
 }
 

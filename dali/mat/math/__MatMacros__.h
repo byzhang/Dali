@@ -9,7 +9,7 @@
 #define MAT(matrix) ((matrix).w()->w)
 #define GRAD(X) ((X).dw()->dw)
 
-#define SAFE_GRAD(X) if (!(X).constant()) GET_GRAD(X)
+#define SAFE_GRAD(X) if (!(X).constant()) GRAD(X)
 
 #ifdef DALI_USE_CUDA
 
