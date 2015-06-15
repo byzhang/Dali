@@ -1,6 +1,7 @@
 #include "dali/mat/math/MatOps.h"
 #include "dali/mat/math/__MatMacros__.h"
 #include "dali/mat/math/CudaUtils.h"
+#include "dali/mat/math/TensorOps.h"
 
 using std::vector;
 using std::string;
@@ -322,11 +323,11 @@ vector<Mat<R>> MatOps<R>::eltmul_rowwise(const vector<Mat<R>>& seq1, const vecto
     #endif
 }
 
+
 template<typename R>
 Mat<R> MatOps<R>::add(
         Mat<R> matrix1,
         Mat<R> matrix2) {
-    #ifndef DONT_COMPILE
     if (matrix1.dims(1) != matrix2.dims(1) && (matrix1.dims(1) == 1 || matrix2.dims(1) == 1)) {
         if (matrix1.dims(1) == 1) {
             return add_broadcast(matrix2, matrix1);
@@ -335,17 +336,21 @@ Mat<R> MatOps<R>::add(
     }
     assert2((matrix1.dims(0) == matrix2.dims(0)) && (matrix1.dims(1) == matrix2.dims(1)),
         "Matrices cannot be added, they do not have the same dimensions.");
+
     auto out = Mat<R>::empty_like(matrix1);
-    MAT(out) = MAT(matrix1) + MAT(matrix2);
-    if (graph::backprop_enabled)
-        graph::emplace_back([matrix1, matrix2, out]() {
-            SAFE_GRAD(matrix1).noalias() += GRAD(out);
-            SAFE_GRAD(matrix2).noalias() += GRAD(out);
-        });
+    DALI_FUNCTION_3_MUT(TensorOps::add, MAT(matrix1), MAT(matrix2), MAT(out));
+
+    // MAT(out) = MAT(matrix1) + MAT(matrix2);
+    // if (graph::backprop_enabled)
+    //     graph::emplace_back([matrix1, matrix2, out]() {
+    //         SAFE_GRAD(matrix1).noalias() += GRAD(out);
+    //         SAFE_GRAD(matrix2).noalias() += GRAD(out);
+    //     });
+    // return out;
+    // #else
+    // return Mat<R>(1,1);
+    // #endif
     return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
 }
 
 
@@ -1757,28 +1762,20 @@ template<typename R>
 Mat<R> MatOps<R>::consider_constant_if(
         Mat<R> matrix,
         bool should_consider_constant) {
-    #ifndef DONT_COMPILE
     if (should_consider_constant)
         return consider_constant(matrix);
     return matrix;
-    #else
-    return Mat<R>(1,1);
-    #endif
 }
 
 template<typename R>
 Mat<R> MatOps<R>::consider_constant(
         Mat<R> matrix
         ) {
-    #ifndef DONT_COMPILE
     // perform a copy of the matrix that references
     // everything and owns nothing. A true nomad.
     Mat<R> out(matrix, false, false);
     out.constant = true;
     return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
 }
 
 template<typename R>
@@ -1900,7 +1897,10 @@ bool allclose_helper(const Tensor<Device,ndims,R>& a, const Tensor<Device,ndims,
 #ifdef DALI_USE_CUDA
 template<int ndims, typename R>
 bool allclose_helper(const Tensor<gpu,ndims,R>& a, const Tensor<gpu,ndims,R>& b, int num_elts, R tol) {
-    return thrust::equal(a.dptr_, a.dptr_ + num_elts, b.dptr_, near_equal<R>(tol));
+    return thrust::equal(to_thrust(a),
+                         to_thrust(a) + num_elts,
+                         to_thrust(b),
+                         near_equal<R>(tol));
 }
 #endif
 
