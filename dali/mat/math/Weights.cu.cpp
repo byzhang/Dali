@@ -30,7 +30,7 @@ typename weights<R>::initializer_t weights<R>::eye(R diag) {
 template<typename R>
 typename weights<R>::initializer_t weights<R>::uniform(R lower, R upper) {
     return [lower, upper](SynchronizedTensor<R>& matrix){
-        DALI_FUNCTION_1_MUT(TensorOps::fill_uniform, matrix, lower, upper);
+        DALI_FUNCTION_1_MUT(TensorOps::random::uniform, matrix, lower, upper);
     };
 };
 
@@ -41,16 +41,8 @@ typename weights<R>::initializer_t weights<R>::uniform(R bound) {
 
 template<typename R>
 typename weights<R>::initializer_t weights<R>::gaussian(R mean, R std) {
-    return [mean, std](SynchronizedTensor<R>& matrix){
-        // std::default_random_engine generator;
-        // std::normal_distribution<R> distribution(mean, std);
-        // std::random_device rd;
-        // generator.seed(rd());
-        // auto randn = [&distribution, &generator] (int) {return distribution(generator);};
-        // GET_MAT(matrix) = MatInternal<R>::eigen_mat::NullaryExpr(
-        //     matrix.dims(0),
-        //     matrix.dims(1),
-        //     randn);
+    return [mean, std](SynchronizedTensor<R>& matrix) {
+        DALI_FUNCTION_1_MUT(TensorOps::random::gaussian, matrix, mean, std);
     };
 };
 

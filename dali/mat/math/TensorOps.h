@@ -40,22 +40,6 @@ namespace TensorOps {
     using mshadow::gpu;
     using mshadow::cpu;
 
-    template<typename tensor_t>
-    void add(tensor_t& a, tensor_t& b, tensor_t& out) {
-        out = a+b;
-    }
-
-    template<typename Device, int ndims, typename R>
-    void add_inplace(mshadow::Tensor<Device,ndims,R> a, int num_elts, R summand) {
-        a += mshadow::expr::scalar<R>(summand);
-    }
-
-    template<typename tensor_t>
-    void add_inplace(tensor_t& a, tensor_t& dest) {
-        dest += a;
-    }
-
-
     #ifdef DALI_USE_CUDA
         template<int ndims, typename R>
         bool equals(const mshadow::Tensor<gpu,ndims,R>& a, const mshadow::Tensor<gpu,ndims,R>& b, int num_elts) {
@@ -85,6 +69,21 @@ namespace TensorOps {
                 });
     }
 
+    template<typename tensor_t>
+    void add(tensor_t& a, tensor_t& b, tensor_t& out) {
+        out = a+b;
+    }
+
+    template<typename Device, int ndims, typename R>
+    void add_inplace(mshadow::Tensor<Device,ndims,R> a, int num_elts, R summand) {
+        a += mshadow::expr::scalar<R>(summand);
+    }
+
+    template<typename tensor_t>
+    void add_inplace(tensor_t& a, tensor_t& dest) {
+        dest += a;
+    }
+
     #ifdef DALI_USE_CUDA
         template<int ndims, typename R>
         R sum(const mshadow::Tensor<gpu,ndims,R>& a, int num_elts) {
@@ -98,17 +97,26 @@ namespace TensorOps {
 
     template<typename tensor_t, typename R>
     void fill(tensor_t& ts, R filler) {
-        mshadow::MapExp<mshadow::sv::saveto>(&ts, mshadow::expr::ScalarExp<R>(
-            (R)filler)
+        mshadow::MapExp<mshadow::sv::saveto>(&ts,
+            mshadow::expr::ScalarExp<R>(filler)
         );
     }
 
-    template<typename Device, int ndims, typename R, template <typename,int,typename> class tensor_t>
-    void fill_uniform(tensor_t<Device, ndims, R>& t, R lower, R upper) {
-        std::random_device rd;
-        mshadow::Random<Device, R> generator((int)rd());
-        generator.SampleUniform(&t, lower, upper);
-    }
+    namespace random {
+        template<typename Device, int ndims, typename R, template <typename,int,typename> class tensor_t>
+        void uniform(tensor_t<Device, ndims, R>& t, R lower, R upper) {
+            std::random_device rd;
+            mshadow::Random<Device, R> generator((int)rd());
+            generator.SampleUniform(&t, lower, upper);
+        }
+
+        template<typename Device, int ndims, typename R, template <typename,int,typename> class tensor_t>
+        void gaussian(tensor_t<Device, ndims, R>& t, R mean, R std) {
+            std::random_device rd;
+            mshadow::Random<Device, R> generator((int)rd());
+            generator.SampleGaussian(&t, mean, std);
+        }
+    };
 
 };
 
