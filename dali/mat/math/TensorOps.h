@@ -2,6 +2,8 @@
 #define DALI_MAT_MATH_TENSOROPS_H
 
 #include <mshadow/tensor.h>
+#include <random>
+#include <functional>
 
 
 #ifdef DALI_USE_CUDA
@@ -11,7 +13,7 @@
 #include <thrust/functional.h>
 #include <thrust/reduce.h>
 #include <thrust/transform.h>
-#include <random>
+
 
 /* CUDA UTILS START HERE */
 
