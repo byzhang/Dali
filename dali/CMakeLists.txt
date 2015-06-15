@@ -25,7 +25,7 @@ if (WITH_CUDA)
     cuda_add_library(dali_cuda ${DaliCudaSources})
     target_link_libraries(dali_cuda ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY})
     SET(CMAKE_CXX_FLAGS ${OLD_CXX_FLAGS})
-
+    SET(CUDA_HOST_COMPILER ${CMAKE_CXX_COMPILER})
 endif(WITH_CUDA)
 
 # todo: move file with add_custom_command
