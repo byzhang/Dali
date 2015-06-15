@@ -1,6 +1,5 @@
 #include "dali/mat/math/MatOps.h"
 #include "dali/mat/math/__MatMacros__.h"
-#include "dali/mat/math/CudaUtils.h"
 #include "dali/mat/math/TensorOps.h"
 
 using std::vector;
@@ -555,13 +554,10 @@ Mat<R> MatOps<R>::elt_inv(Mat<R> matrix) {
 
 template<typename R>
 Mat<R> MatOps<R>::fill(Mat<R> matrix, R filler) {
-    #ifndef DONT_COMPILE
     auto out = Mat<R>::empty_like(matrix);
-    MAT(out).fill(filler);
+    DALI_FUNCTION_1_MUT(TensorOps::fill, MAT(out), filler);
     return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
+
 }
 
 template<typename R>

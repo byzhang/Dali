@@ -1,6 +1,7 @@
 #include "dali/mat/math/MatInternal.h"
 
 #include "dali/mat/math/__MatMacros__.h"
+#include "dali/mat/math/TensorOps.h"
 
 using std::vector;
 using std::string;
@@ -31,7 +32,7 @@ MatInternal<R>::MatInternal(dim_t n, dim_t d, bool fill_zeros) :
         dims( {n, d}),
         id(next_matrix.fetch_add(1)) {
     if (fill_zeros) {
-        tensor_fill(w, 0.0);
+        DALI_FUNCTION_1_MUT(TensorOps::fill, w, 0.0);
     }
 }
 
@@ -101,7 +102,7 @@ void MatInternal<R>::print() const {
 
 template<typename R>
 void MatInternal<R>::clear() {
-    tensor_fill(w, 0);
+    DALI_FUNCTION_1_MUT(TensorOps::fill, w, 0.0);
 }
 
 /* GradInternal */
@@ -110,7 +111,7 @@ template<typename R>
 GradInternal<R>::GradInternal(dim_t n, dim_t d, bool fill_zeros) :
         dw(n, d, preferred_device) {
     if (fill_zeros) {
-        tensor_fill(dw, 0.0);
+        DALI_FUNCTION_1_MUT(TensorOps::fill, dw, 0.0);
     }
 }
 
@@ -163,7 +164,7 @@ R* GradInternal<R>::data() {
 
 template<typename R>
 void GradInternal<R>::clear() {
-    tensor_fill(dw, 0);
+    DALI_FUNCTION_1_MUT(TensorOps::fill, dw, 0.0);
 }
 
 template class MatInternal<float>;

@@ -1,8 +1,8 @@
 #include "dali/mat/math/Weights.h"
 
-#include "mshadow/random.h"
-
 #include "dali/mat/math/__MatMacros__.h"
+#include "dali/mat/math/TensorOps.h"
+#include "mshadow/random.h"
 
 using utils::assert2;
 
@@ -14,7 +14,7 @@ typename weights<R>::initializer_t weights<R>::uninitialized() {
 template<typename R>
 typename weights<R>::initializer_t weights<R>::zeros() {
     return [](Mat<R>& matrix){
-        tensor_fill(MAT(matrix), 0);
+        DALI_FUNCTION_1_MUT(TensorOps::fill, MAT(matrix), 0.0);
     };
 };
 

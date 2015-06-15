@@ -82,21 +82,4 @@
 #define TENSOR_TEMPLATE template<typename Device, int dims, typename R>
 
 
-
-template<typename Device, int ndims, typename R, typename R2>
-void tensor_fill(mshadow::Tensor<Device, ndims, R>& ts, R2 filler) {
-    mshadow::MapExp<mshadow::sv::saveto>(&ts, mshadow::expr::ScalarExp<R>((R)filler));
-}
-
-template<typename R, typename R2>
-inline void tensor_fill(SynchronizedTensor<R>& t, R2 filler) {
-    DALI_FUNCTION_1_MUT(tensor_fill, t, filler);
-    // (should_compute_on_gpu({(t)}) ?
-    //     tensor_fill((t).mutable_gpu_data(), filler)
-    // :
-    //     tensor_fill((t).mutable_cpu_data(), filler)
-    // );
-}
-
-
 #endif

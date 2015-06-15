@@ -95,6 +95,11 @@ namespace TensorOps {
         return std::accumulate(a.dptr_, a.dptr_ + num_elts, 0.0);
     }
 
+    template<typename Device, int ndims, typename R, typename R2>
+    void fill(mshadow::Tensor<Device, ndims, R>& ts, R2 filler) {
+        mshadow::MapExp<mshadow::sv::saveto>(&ts, mshadow::expr::ScalarExp<R>((R)filler));
+    }
+
 };
 
 

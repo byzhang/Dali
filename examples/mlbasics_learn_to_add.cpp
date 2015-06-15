@@ -51,7 +51,7 @@ int main( int argc, char* argv[]) {
         // This is slightly obnoxious, but fear not - we
         // provide an excellent solver class, so that you
         // never how to do it on your own!
-        W.w()->w -= LR * W.dw()->dw;
+        // W.w()->w -= LR * W.dw()->dw;
         // Reset gradients
         W.clear_grad();
         Y.clear_grad();
