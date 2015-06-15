@@ -19,11 +19,7 @@ typename weights<R>::initializer_t weights<R>::zeros() {
 template<typename R>
 typename weights<R>::initializer_t weights<R>::eye(R diag) {
     return [diag](SynchronizedTensor<R>& matrix) {
-        // assert2(matrix.dims(0) == matrix.dims(1), "Identity initialization requires square matrix.");
-        // auto& mat = GET_MAT(matrix);
-        // mat.fill(0);
-        // for (int i = 0; i < matrix.dims(0); i++)
-        //     mat(i,i) = diag;
+        DALI_FUNCTION_1_MUT(TensorOps::eye, matrix, diag);
     };
 };
 

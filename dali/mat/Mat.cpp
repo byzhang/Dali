@@ -228,9 +228,6 @@ void Mat<R>::clear_grad() {
     dw()->clear();
 }
 
-
-
-
 template<typename R>
 void Mat<R>::npy_save (string fname, string mode) {
     cnpy::npy_save(fname, w()->data(), dims().data(), dims().size(), mode);
@@ -238,10 +235,7 @@ void Mat<R>::npy_save (string fname, string mode) {
 
 template<typename R>
 unsigned int Mat<R>::number_of_elements() const {
-    unsigned int dim = 1;
-    for (auto& n : dims())
-        dim *= n;
-    return dim;
+    return w()->number_of_elements();
 }
 
 template<typename R>

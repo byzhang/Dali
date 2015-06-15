@@ -51,6 +51,8 @@ class MatInternal {
         void clear();
 
         operator mat_storage_t();
+
+        unsigned int number_of_elements() const;
 };
 
 template<typename R>

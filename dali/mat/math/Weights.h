@@ -2,6 +2,7 @@
 #define DALI_MAT_MATH_WEIGHTS_H
 
 #include <functional>
+#include "dali/utils/core_utils.h"
 
 template<typename R>
 class SynchronizedTensor;

@@ -49,6 +49,14 @@ MatInternal<R>::~MatInternal() {
 }
 
 template<typename R>
+unsigned int MatInternal<R>::number_of_elements() const {
+    unsigned int dim = 1;
+    for (auto& n : dims)
+        dim *= n;
+    return dim;
+}
+
+template<typename R>
 MatInternal<R>::operator typename MatInternal<R>::mat_storage_t () {
     return w;
 }

@@ -211,6 +211,20 @@ TEST_F(MatrixTests, sum_gradient) {
 
 }
 
+TEST_F(MatrixTests, identity_init) {
+    R init_val = 2.0;
+    auto A = Mat<R>(10, 10, weights<R>::eye(init_val));
+    EXPECT_MAT_ON_GPU(A);
+    for (int i = 0; i < A.dims(0); i++) {
+        for (int j = 0; j < A.dims(1); j++) {
+            if (i == j) {
+                EXPECT_TRUE(A.w(i, j) == init_val);
+            } else {
+                EXPECT_TRUE(A.w(i, j) == 0.0);
+            }
+        }
+    }
+}
 
 
 // TEST_F(MatrixTests, recursive_sum) {

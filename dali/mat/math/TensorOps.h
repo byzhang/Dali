@@ -10,6 +10,7 @@
 #include <thrust/equal.h>
 #include <thrust/functional.h>
 #include <thrust/reduce.h>
+#include <thrust/transform.h>
 #include <random>
 
 /* CUDA UTILS START HERE */
@@ -101,6 +102,48 @@ namespace TensorOps {
             mshadow::expr::ScalarExp<R>(filler)
         );
     }
+
+    template<int ndims, typename R>
+    void eye(mshadow::Tensor<cpu,ndims,R>& tc, R diag) {
+        if (tc.shape_[0] != tc.shape_[1]) {
+            throw std::runtime_error("Identity initialization must be called on a square matrix.");
+        }
+        fill(tc, (R)0.0);
+        for (int i = 0; i < tc.shape_[0]; i++)
+            tc[i][i] = diag;
+    }
+
+    #ifdef DALI_USE_CUDA
+    template<typename R>
+    struct IdentityKernel : public thrust::binary_function<int,R, R> {
+        R diag;
+        int rows;
+        IdentityKernel(R _diag, int _rows) : diag(_diag), rows(_rows) {}
+        __host__ __device__ R operator()(const int& offset, const R& b) const {
+            return (offset / rows) == (offset % rows) ? diag : 0.0;
+        }
+    };
+
+    template<int ndims, typename R>
+    void eye(mshadow::Tensor<gpu,ndims,R>& tg, R diag) {
+        if (tg.shape_[0] != tg.shape_[1]) {
+            throw std::runtime_error("Identity initialization must be called on a square matrix.");
+        }
+        int num_elts = tg.shape_[0] * tg.shape_[1];
+        int num_rows = tg.shape_[0];
+        // counting iterators define a sequence [0, 8)
+        thrust::counting_iterator<int> first(0);
+        thrust::counting_iterator<int> last = first + num_elts;
+
+        thrust::transform(
+            first,
+            last,
+            to_thrust(tg),
+            to_thrust(tg),
+            IdentityKernel<R>(diag, num_rows)
+        );
+    }
+    #endif
 
     namespace random {
         template<typename Device, int ndims, typename R, template <typename,int,typename> class tensor_t>
