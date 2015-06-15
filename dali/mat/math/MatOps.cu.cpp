@@ -774,7 +774,7 @@ template<typename R>
 Mat<R> MatOps<R>::sum(Mat<R> matrix) {
     if (matrix.dims(0) == 1 && matrix.dims(1) == 1)
         return matrix;
-    Mat<R> out (1,1, false);
+    Mat<R> out(1,1, weights<R>::empty());
     out.w(0) = DALI_FUNCTION_1(TensorOps::sum, MAT(matrix), matrix.number_of_elements());
     if (backprop_enabled() && !matrix.constant)
         emplace_back([matrix, out](){
@@ -788,7 +788,7 @@ Mat<R> MatOps<R>::sum(Mat<R> matrix) {
 
 template<typename R>
 Mat<R> MatOps<R>::mean(Mat<R> matrix) {
-    Mat<R> out (1,1, false);
+    Mat<R> out (1,1, weights<R>::empty());
     auto ne = matrix.number_of_elements();
     out.w(0) = DALI_FUNCTION_1(TensorOps::sum, MAT(matrix), ne) / ne;
     if (backprop_enabled() && !matrix.constant)
@@ -818,7 +818,7 @@ Mat<R> MatOps<R>::sigmoid_binary_cross_entropy(Mat<R> matrix, R t) {
                 + ( 1.0 - t) * ( 1.00000001 - sigmoided_input->array() ).log()
     ).matrix();
 
-    if (graph::backprop_enabled)
+    if (graph::backprop_enabled())
         graph::emplace_back([matrix, t, out, sigmoided_input](){
             SAFE_GRAD(matrix).array() += (sigmoided_input->array() - t) * GRAD(out).array();
         });
@@ -844,7 +844,7 @@ Mat<R> MatOps<R>::binary_cross_entropy(Mat<R> matrix, R t) {
 
     DEBUG_ASSERT_MAT_NOT_NAN(out);
 
-    if (graph::backprop_enabled)
+    if (graph::backprop_enabled())
         graph::emplace_back([matrix, t, out](){
             auto x = MAT(matrix).array();
             SAFE_GRAD(matrix).array() += (

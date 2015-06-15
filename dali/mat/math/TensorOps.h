@@ -10,6 +10,7 @@
 #include <thrust/equal.h>
 #include <thrust/functional.h>
 #include <thrust/reduce.h>
+#include <random>
 
 /* CUDA UTILS START HERE */
 
@@ -95,9 +96,18 @@ namespace TensorOps {
         return std::accumulate(a.dptr_, a.dptr_ + num_elts, 0.0);
     }
 
-    template<typename Device, int ndims, typename R, typename R2>
-    void fill(mshadow::Tensor<Device, ndims, R>& ts, R2 filler) {
-        mshadow::MapExp<mshadow::sv::saveto>(&ts, mshadow::expr::ScalarExp<R>((R)filler));
+    template<typename tensor_t, typename R>
+    void fill(tensor_t& ts, R filler) {
+        mshadow::MapExp<mshadow::sv::saveto>(&ts, mshadow::expr::ScalarExp<R>(
+            (R)filler)
+        );
+    }
+
+    template<typename Device, int ndims, typename R, template <typename,int,typename> class tensor_t>
+    void fill_uniform(tensor_t<Device, ndims, R>& t, R lower, R upper) {
+        std::random_device rd;
+        mshadow::Random<Device, R> generator((int)rd());
+        generator.SampleUniform(&t, lower, upper);
     }
 
 };

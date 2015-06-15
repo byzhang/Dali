@@ -77,8 +77,8 @@ class Mat {
         Mat (dim_t n, dim_t d);
         // sometimes we don't need to reset m
         // (for example if it's about to be assigned).
-        Mat (dim_t n, dim_t d, bool fill_zeros);
-        Mat (dim_t n, dim_t d,
+        explicit Mat (dim_t n, dim_t d, bool fill_zeros);
+        explicit Mat (dim_t n, dim_t d,
              typename weights<R>::initializer_t wi);
         /*
         A copy constructor that perform shallow and deep

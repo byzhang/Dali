@@ -3,17 +3,14 @@
 
 #include <functional>
 
-#include "dali/mat/Mat.h"
-#include "dali/mat/math/MatInternal.h"
-#include "dali/utils/core_utils.h"
-
-template<typename R> class Mat;
+template<typename R>
+class SynchronizedTensor;
 
 template<typename R>
 struct weights {
-    typedef std::function<void(Mat<R>&)> initializer_t;
+    typedef std::function<void(SynchronizedTensor<R>&)> initializer_t;
 
-    static initializer_t uninitialized();
+    static initializer_t empty();
     static initializer_t zeros();
     static initializer_t uniform(R lower, R upper);
     static initializer_t uniform(R bound);

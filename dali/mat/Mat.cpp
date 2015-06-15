@@ -121,12 +121,12 @@ Mat<R>::Mat(dim_t n, dim_t d, typename weights<R>::initializer_t wi) :
     m = make_shared<MatInternal<R>>(n, d, false);
     // We always reset the grad calculation
     g = make_shared<GradInternal<R>>(n, d, true);
-    wi(*this);
+    wi(w()->w);
 }
 
 template<typename R>
 Mat<R>::Mat (dim_t n, dim_t d, bool fill_zeros) :
-        Mat(n, d, fill_zeros ? weights<R>::zeros() : weights<R>::uninitialized()) {
+        Mat(n, d, fill_zeros ? weights<R>::zeros() : weights<R>::empty()) {
 }
 
 template<typename R>
