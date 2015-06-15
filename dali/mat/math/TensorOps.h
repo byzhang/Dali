@@ -8,6 +8,11 @@ namespace TensorOps {
     void add(tensor_t& a, tensor_t& b, tensor_t& out) {
         out = a+b;
     }
+
+    template<typename tensor_t>
+    void add_inplace(tensor_t& a, tensor_t& dest) {
+        dest += a;
+    }
 };
 
 

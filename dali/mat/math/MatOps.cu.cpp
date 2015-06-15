@@ -340,16 +340,15 @@ Mat<R> MatOps<R>::add(
     auto out = Mat<R>::empty_like(matrix1);
     DALI_FUNCTION_3_MUT(TensorOps::add, MAT(matrix1), MAT(matrix2), MAT(out));
 
-    // MAT(out) = MAT(matrix1) + MAT(matrix2);
-    // if (graph::backprop_enabled)
-    //     graph::emplace_back([matrix1, matrix2, out]() {
-    //         SAFE_GRAD(matrix1).noalias() += GRAD(out);
-    //         SAFE_GRAD(matrix2).noalias() += GRAD(out);
-    //     });
-    // return out;
-    // #else
-    // return Mat<R>(1,1);
-    // #endif
+    if (graph::backprop_enabled)
+        graph::emplace_back([matrix1, matrix2, out]() {
+            if (!matrix1.constant)
+                // matrix1.dw() += out.dw()
+                DALI_FUNCTION_2_MUT(TensorOps::add_inplace, GRAD(out), GRAD(matrix1));
+            if (!matrix2.constant)
+                // matrix1.dw() += out.dw()
+                DALI_FUNCTION_2_MUT(TensorOps::add_inplace, GRAD(out), GRAD(matrix2));
+        });
     return out;
 }
 
