@@ -46,42 +46,25 @@ AssertionResult buffer_almost_equals(T* buffer1, T* buffer2, uint size1, uint si
     return AssertionSuccess();
 }
 
-#define ASSERT_MATRIX_EQ(A, B) ASSERT_TRUE(buffer_equals((A).w()->data(), (B).w()->data(), (A).number_of_elements(), (B).number_of_elements()))
-#define ASSERT_MATRIX_NEQ(A, B) ASSERT_FALSE(buffer_equals((A).w()->data(), (B).w()->data(), (A).number_of_elements(), (B).number_of_elements()))
-#define ASSERT_MATRIX_CLOSE(A, B, eps) ASSERT_TRUE(buffer_almost_equals((A).w()->data(), \
-                                                                        (B).w()->data(), \
-                                                                        (A).number_of_elements(), \
-                                                                        (B).number_of_elements(), \
-                                                                        (eps)))
-#define ASSERT_MATRIX_GRAD_CLOSE(A, B, eps) ASSERT_TRUE(buffer_almost_equals((A).dw()->data(), \
-                                                                             (B).dw()->data(), \
-                                                                             (A).number_of_elements(), \
-                                                                             (B).number_of_elements(), \
-                                                                             (eps)))
-#define ASSERT_MATRIX_GRAD_NOT_CLOSE(A, B, eps) ASSERT_FALSE(buffer_almost_equals((A).dw()->data(), \
-                                                                                  (B).dw()->data(), \
-                                                                                  (A).number_of_elements(), \
-                                                                                  (B).number_of_elements(), \
-                                                                                  (eps)))
+#define ASSERT_MATRIX_EQ(A, B) ASSERT_TRUE(MatOps<R>::equals((A),(B)))
+#define ASSERT_MATRIX_NEQ(A, B) ASSERT_FALSE(MatOps<R>::equals((A),(B)))
+#define ASSERT_MATRIX_CLOSE(A, B, eps) ASSERT_TRUE(MatOps<R>::allclose((A),(B), (eps)))
+#define ASSERT_MATRIX_GRAD_CLOSE(A, B, eps) ASSERT_TRUE(MatOps<R>::grad_allclose((A),(B),(eps)))
+#define ASSERT_MATRIX_GRAD_NOT_CLOSE(A, B, eps) ASSERT_FALSE(MatOps<R>::grad_allclose((A),(B),(eps)))
 
-#define EXPECT_MATRIX_EQ(A, B) EXPECT_TRUE(buffer_equals((A).w()->data(), (B).w()->data(), (A).number_of_elements(), (B).number_of_elements()))
-#define EXPECT_MATRIX_NEQ(A, B) EXPECT_FALSE(buffer_equals((A).w()->data(), (B).w()->data(), (A).number_of_elements(), (B).number_of_elements()))
-#define EXPECT_MATRIX_CLOSE(A, B, eps) EXPECT_TRUE(buffer_almost_equals((A).w()->data(), \
-                                                                        (B).w()->data(), \
-                                                                        (A).number_of_elements(), \
-                                                                        (B).number_of_elements(), \
-                                                                        (B).n(eps)))
-#define EXPECT_MATRIX_GRAD_CLOSE(A, B, eps) EXPECT_TRUE(buffer_almost_equals((A).dw()->data(), \
-                                                                             (B).dw()->data(), \
-                                                                             (A).number_of_elements(), \
-                                                                             (B).number_of_elements(), \
-                                                                             (eps)))
-#define EXPECT_MATRIX_GRAD_NOT_CLOSE(A, B, eps) EXPECT_FALSe(buffer_almost_equals((A).dw()->data(), \
-                                                                                  (B).dw()->data(), \
-                                                                                  (A).number_of_elements(), \
-                                                                                  (B).number_of_elements(), \
-                                                                                  (eps)))
+#define EXPECT_MATRIX_EQ(A, B) EXPECT_TRUE(MatOps<R>::equals((A),(B)))
+#define EXPECT_MATRIX_NEQ(A, B) EXPECT_FALSE(MatOps<R>::equals((A),(B)))
+#define EXPECT_MATRIX_CLOSE(A, B, eps) EXPECT_TRUE(MatOps<R>::allclose((A),(B), (eps)))
+#define EXPECT_MATRIX_GRAD_CLOSE(A, B, eps) EXPECT_TRUE(MatOps<R>::grad_allclose((A),(B),(eps)))
+#define EXPECT_MATRIX_GRAD_NOT_CLOSE(A, B, eps) EXPECT_FALSE(MatOps<R>::grad_allclose((A),(B),(eps)))
 
+#ifdef DALI_USE_CUDA
+#define ASSERT_MAT_ON_GPU(A) ASSERT_TRUE(MAT(A).gpu_fresh)
+#define EXPECT_MAT_ON_GPU(A) EXPECT_TRUE(MAT(A).gpu_fresh)
+#else
+#define ASSERT_MAT_ON_GPU(A)
+#define EXPECT_MAT_ON_GPU(A)
+#endif
 
 class MatrixTests : public MemorySafeTest {
     virtual void SetUp() {
@@ -118,13 +101,14 @@ bool gradient_same(
         R  Arg_prime[arg.number_of_elements()];
         R* arg_buffer = arg.w()->data();
         for (int i = 0; i < arg.number_of_elements(); i++) {
-            auto prev_val = arg_buffer[i];
-            arg_buffer[i] = prev_val +  grad_epsilon;
-            auto obj_positive = functor(arguments).w()->w.array().sum();
-            arg_buffer[i] = prev_val - grad_epsilon;
-            auto obj_negative = functor(arguments).w()->w.array().sum();
-            arg_buffer[i] = prev_val;
-            Arg_prime[i] = (obj_positive - obj_negative) / (2.0 * grad_epsilon);
+            auto prev_val     = arg_buffer[i];
+            arg_buffer[i]     = prev_val +  grad_epsilon;
+            auto obj_positive = MatOps<R>::consider_constant(functor(arguments)).sum().w(0);
+            arg_buffer[i]     = prev_val - grad_epsilon;
+            auto obj_negative = MatOps<R>::consider_constant(functor(arguments)).sum().w(0);
+
+            arg_buffer[i]     = prev_val;
+            Arg_prime[i]      = (obj_positive.w(0) - obj_negative.w(0)) / (2.0 * grad_epsilon);
         }
         AssertionResult did_work_out = buffer_almost_equals(
                 (R*)Arg_prime,
@@ -150,12 +134,16 @@ bool gradient_same(
 }
 
 
-TEST_F(MatrixTests, addition) {
+TEST_F(MatrixTests, equals) {
     auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
     auto B = Mat<R>(10, 20, weights<R>::uniform(2.0));
 
-    ASSERT_MATRIX_EQ(A, A)  << "A equals A.";
-    ASSERT_MATRIX_NEQ(A, B) << "A different from B.";
+    EXPECT_MATRIX_EQ(A, A)  << "A equals A.";
+    EXPECT_MATRIX_NEQ(A, B) << "A different from B.";
+
+    EXPECT_MAT_ON_GPU(A);
+    EXPECT_MAT_ON_GPU(B);
+
 }
 
 /*
@@ -168,6 +156,8 @@ TEST_F(MatrixTests, sum_gradient) {
         ASSERT_TRUE(gradient_same<R>(functor, {A}));
     }
 }
+
+
 
 TEST_F(MatrixTests, recursive_sum) {
     auto functor = [](vector<Mat<R>>& Xs)-> Mat<R> {
@@ -241,6 +231,8 @@ TEST_F(MatrixTests, inplace_multiply) {
     }
 }
 
+
+
 TEST_F(MatrixTests, addition_gradient) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0] + Xs[1];
@@ -251,6 +243,7 @@ TEST_F(MatrixTests, addition_gradient) {
         ASSERT_TRUE(gradient_same<R>(functor, {A, B}));
     }
 }
+
 
 TEST_F(MatrixTests, addition_broadcast_gradient) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {

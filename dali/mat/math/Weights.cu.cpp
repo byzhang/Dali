@@ -14,7 +14,7 @@ typename weights<R>::initializer_t weights<R>::uninitialized() {
 template<typename R>
 typename weights<R>::initializer_t weights<R>::zeros() {
     return [](Mat<R>& matrix){
-        tensor_fill(DALI_MAT_ST(matrix), 0);
+        tensor_fill(MAT(matrix), 0);
     };
 };
 
@@ -39,10 +39,10 @@ void uniform_fill_helper(mshadow::Tensor<Device,dims,R>& t, R lower, R upper) {
 template<typename R>
 typename weights<R>::initializer_t weights<R>::uniform(R lower, R upper) {
     return [lower, upper](Mat<R>& matrix){
-        DALI_EXECUTE_ST_FUNCTION_MUT(DALI_MAT_ST(matrix),
-                                     uniform_fill_helper,
-                                     lower,
-                                     upper);
+        DALI_FUNCTION_1_MUT(uniform_fill_helper,
+                            MAT(matrix),
+                            lower,
+                            upper);
     };
 };
 

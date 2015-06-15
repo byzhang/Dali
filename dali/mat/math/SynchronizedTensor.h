@@ -1,6 +1,7 @@
 #ifndef DALI_MAT_MATH_SYNCHRONIZED_TENSOR_H
 #define DALI_MAT_MATH_SYNCHRONIZED_TENSOR_H
 
+#include <functional>
 #include <mshadow/tensor.h>
 
 // This a small file keeping track of freshness of memory on CPU.
@@ -9,8 +10,6 @@
 // the memory to CPU before executing an operation.
 // On top of that we want to minimize the number of copies,
 // which SynchronizedTensor helps achieving.
-
-#include <mshadow/tensor.h>
 
 enum PreferredDevice {
     DEVICE_GPU,
@@ -45,7 +44,6 @@ enum PreferredDevice {
         // tie-breaker for operations involving multiple tensors
         // on mixed devices.
         static PreferredDevice tie_breaker_device;
-        static bool should_compute_on_gpu(SynchronizedTensor& ts, ...);
       private:
         void to_gpu() const;
         void to_cpu() const;
@@ -75,8 +73,6 @@ enum PreferredDevice {
 
         SynchronizedTensor& operator=(const SynchronizedTensor&) = delete;
 
-
-        static bool should_compute_on_gpu(SynchronizedTensor& ts, ...);
       private:
         void to_cpu() const;
         template<typename SourceType>
@@ -84,5 +80,11 @@ enum PreferredDevice {
     };
 
 #endif
+
+
+template<typename R>
+bool should_compute_on_gpu(
+        std::initializer_list<std::reference_wrapper<SynchronizedTensor<R>>> sts);
+
 
 #endif

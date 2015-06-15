@@ -1,49 +1,59 @@
 #ifndef DALI_MAT_MATH___MAT_MACROS___H
 #define DALI_MAT_MATH___MAT_MACROS___H
 
+#include <functional>
 #include <mshadow/tensor.h>
 
 #include "dali/mat/math/SynchronizedTensor.h"
 
-#define DALI_MAT_ST(matrix) ((matrix).w()->w)
-#define DALI_GRAD_ST(X) ((X).dw()->dw)
+#define MAT(matrix) ((matrix).w()->w)
+#define GRAD(X) ((X).dw()->dw)
 
-#define GRAD(X) if (!(X).constant()) GET_GRAD(X)
+#define SAFE_GRAD(X) if (!(X).constant()) GET_GRAD(X)
 
 #ifdef DALI_USE_CUDA
-    #define DALI_EXECUTE_ST_FUNCTION_1_MUT(st, f, ...)        \
-            if ((st).prefers_gpu()) {                         \
-                f((st).mutable_gpu_data(), __VA_ARGS__);      \
-            } else {                                          \
-                f((st).mutable_cpu_data(), __VA_ARGS__);      \
-            }
 
-    #define DALI_EXECUTE_ST_FUNCTION_1(st, f, ...)            \
-            if ((st).prefers_gpu()) {                         \
-                f((st).gpu_data(), __VA_ARGS__);              \
-            } else {                                          \
-                f((st).cpu_data(), __VA_ARGS__);              \
-            }
+    #define DALI_FUNCTION_1_MUT(f, st, ...)              \
+            (should_compute_on_gpu({std::ref(st)}) ?     \
+                f((st).mutable_gpu_data(), __VA_ARGS__)  \
+            :                                            \
+                f((st).mutable_cpu_data(), __VA_ARGS__)  \
+            )
 
-    #define DALI_EXECUTE_ST_FUNCTION_2_MUT(st1, st2, f, ...)  \
-            if ((st1).prefers_gpu() && (st2).prefers_gpu()) { \
-                f((st1).mutable_gpu_data(), (st2).mutable_gpu_data(), __VA_ARGS__);      \
-            } else { \
-                f((st1).mutable_cpu_data(), (st2).mutable_cpu_data(), __VA_ARGS__);      \
-            }
+    #define DALI_FUNCTION_1(f, st, ...)               \
+            (should_compute_on_gpu({std::ref(st)}) ?  \
+                f((st).gpu_data(), __VA_ARGS__)       \
+            :                                         \
+                f((st).cpu_data(), __VA_ARGS__)       \
+            )
 
-    #define DALI_EXECUTE_ST_FUNCTION_2(st1, st2, f, ...)            \
-            if ((st1).prefers_gpu() && (st2).prefers_gpu()) {       \
-                f((st1).gpu_data(), (st2).gpu_data(), __VA_ARGS__); \
-            } else {                                                \
-                f((st1).cpu_data(), (st2).cpu_data() __VA_ARGS__);                    \
-            }
+    #define DALI_FUNCTION_2_MUT(f, st1, st2, ...)                                   \
+            (should_compute_on_gpu({std::ref(st1), std::ref(st2)}) ?                \
+                f((st1).mutable_gpu_data(), (st2).mutable_gpu_data(), __VA_ARGS__)  \
+            :                                                                       \
+                f((st1).mutable_cpu_data(), (st2).mutable_cpu_data(), __VA_ARGS__)  \
+            )
+
+    #define DALI_FUNCTION_2(f, st1, st2, ...)                         \
+            (should_compute_on_gpu({std::ref(st1), std::ref(st2)}) ?  \
+                f((st1).gpu_data(), (st2).gpu_data(), __VA_ARGS__)    \
+            :                                                         \
+                f((st1).cpu_data(), (st2).cpu_data(), __VA_ARGS__)     \
+            )
 #else
-    #define DALI_EXECUTE_ST_FUNCTION_MUT(st, f, ...) \
-            f((st).mutable_cpu_data(), __VA_ARGS__);
+    #define DALI_FUNCTION_1_MUT(f, st, ...)          \
+            f((st).mutable_cpu_data(), __VA_ARGS__)
 
-    #define DALI_EXECUTE_ST_FUNCTION(st, f, ...) \
-            f((st).cpu_data(), __VA_ARGS__);
+    #define DALI_FUNCTION_1(f, st, ...)      \
+            f((st).cpu_data(), __VA_ARGS__)
+
+    #define DALI_FUNCTION_2_MUT(f, st1, st2, ...)                                   \
+                f((st1).mutable_cpu_data(), (st2).mutable_cpu_data(), __VA_ARGS__)  \
+
+    #define DALI_FUNCTION_2(f, st1, st2, ...)                      \
+                f((st1).cpu_data(), (st2).cpu_data(), __VA_ARGS__)  \
+
+
 #endif
 
 #define TENSOR_TEMPLATE template<typename Device, int dims, typename R>
@@ -57,7 +67,12 @@ void tensor_fill(mshadow::Tensor<Device, ndims, R>& ts, R2 filler) {
 
 template<typename R, typename R2>
 inline void tensor_fill(SynchronizedTensor<R>& t, R2 filler) {
-    DALI_EXECUTE_ST_FUNCTION_MUT(t, tensor_fill, filler);
+    DALI_FUNCTION_1_MUT(tensor_fill, t, filler);
+    // (should_compute_on_gpu({(t)}) ?
+    //     tensor_fill((t).mutable_gpu_data(), filler)
+    // :
+    //     tensor_fill((t).mutable_cpu_data(), filler)
+    // );
 }
 
 

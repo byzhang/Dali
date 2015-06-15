@@ -7,7 +7,7 @@ using mshadow::Tensor;
 using mshadow::Copy;
 
 template<typename R>
-SynchronizedTensor<R>::SynchronizedTensor(int n, int d, PreferredDevice preferred_device) :
+SynchronizedTensor<R>::SynchronizedTensor(int n, int d, PreferredDevice _preferred_device) :
 #ifdef DALI_USE_CUDA
     mem_gpu(Shape2(n, d)),
     gpu_fresh(false),
@@ -44,9 +44,6 @@ SynchronizedTensor<R>::SynchronizedTensor(const SynchronizedTensor& other) :
 #ifdef DALI_USE_CUDA
     template<typename R>
     PreferredDevice SynchronizedTensor<R>::tie_breaker_device = DEVICE_GPU;
-#else
-    template<typename R>
-    PreferredDevice SynchronizedTensor<R>::tie_breaker_device = DEVICE_CPU;
 #endif
 
 template<typename R>
@@ -141,17 +138,34 @@ void SynchronizedTensor<R>::copy_data_from(SourceType& data_source) {
     }
 }
 
+template<typename R>
+bool should_compute_on_gpu(
+        std::initializer_list<std::reference_wrapper<SynchronizedTensor<R>>> sts) {
+
 #ifdef DALI_USE_CUDA
-bool should_compute_on_gpu(SynchronizedTensor& ts, ...) {
-    va_list args;
-    va_start(args, ts);
-    bool preference = true;
-}
+    bool everybody_cpu = true;
+    bool everybody_gpu = true;
+    for (auto& st : sts) {
+        everybody_gpu = everybody_gpu && st.get().prefers_gpu();
+        everybody_cpu = everybody_cpu && st.get().prefers_cpu();
+    }
+    if (everybody_cpu) {
+        return false;
+    } else if (everybody_gpu) {
+        return true;
+    } else {
+        return SynchronizedTensor<R>::tie_breaker_device == DEVICE_GPU;
+    }
 #else
-bool should_compute_on_gpu(SynchronizedTensor& ts, ...) {
     return false;
-}
 #endif
+}
+
+template bool should_compute_on_gpu(
+        std::initializer_list<std::reference_wrapper<SynchronizedTensor<float>>>);
+template bool should_compute_on_gpu(
+        std::initializer_list<std::reference_wrapper<SynchronizedTensor<double>>>);
+
 
 template class SynchronizedTensor<float>;
 template class SynchronizedTensor<double>;

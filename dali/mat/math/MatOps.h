@@ -5,6 +5,7 @@
 #include <vector>
 #include <memory>
 #ifdef DALI_USE_CUDA
+#include <thrust/device_vector.h>
 #include <thrust/equal.h>
 #endif
 #include "dali/mat/Mat.h"
@@ -269,7 +270,8 @@ struct MatOps {
     static Mat<R> sqrt(Mat<R>);
     static Mat<R> elt_inv(Mat<R>);
     static bool   equals(Mat<R> a, Mat<R> b);
-    static bool   almost_equals(Mat<R> a, Mat<R> b, R tol);
+    static bool   allclose(Mat<R> a, Mat<R> b, R tol);
+    static bool   grad_allclose(Mat<R> a, Mat<R> b, R tol);
     static Mat<R> conv2d(Mat<R> image, Mat<R> kernel);
     static Mat<R> conv1d(Mat<R> image, Mat<R> kernel);
     static Mat<R> conv1d(Mat<R> image, Mat<R> kernel, bool pad);
