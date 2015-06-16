@@ -64,6 +64,7 @@ target_link_libraries(dali ${ZLIB_LIBRARIES}
                            SQLiteCpp
                            sqlite3
                            json11static
+                           openblas
                            ${BLAS_LIBRARIES}
                            ${MKL_LIBRARIES}
                            ${GFLAGS_LIBRARIES})

@@ -189,7 +189,7 @@ TEST_F(MatrixTests, equals) {
 
     EXPECT_MATRIX_EQ(A, A)  << "A equals A.";
     EXPECT_MATRIX_NEQ(A, B) << "A different from B.";
-//    EXPECT_MATRIX_CLOSE(A, A, 1e-4)  << "A near A.";
+    EXPECT_MATRIX_CLOSE(A, A, 1e-4)  << "A near A.";
     EXPECT_MATRIX_NOT_CLOSE(A, B, 1e-4) << "A not near B.";
 
     EXPECT_MAT_ON_GPU(A);
@@ -383,7 +383,7 @@ TEST_F(MatrixTests, log_gradient) {
         auto A = Mat<R>(10, 20, weights<R>::uniform(0.001, 20.0));
         ASSERT_TRUE(gradient_same(functor, {A}, 1e-4));
     }
-}
+}*/
 
 TEST_F(MatrixTests, matrix_dot_plus_bias) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
@@ -400,6 +400,7 @@ TEST_F(MatrixTests, matrix_dot_plus_bias) {
     }
 }
 
+/*
 TEST_F(MatrixTests, matrix_divide) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0] / Xs[1];

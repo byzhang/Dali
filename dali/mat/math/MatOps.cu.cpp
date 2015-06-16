@@ -334,7 +334,7 @@ Mat<R> MatOps<R>::add(
         "Matrices cannot be added, they do not have the same dimensions.");
 
     auto out = Mat<R>::empty_like(matrix1);
-    DALI_FUNCTION_3_MUT(TensorOps::add, MAT(matrix1), MAT(matrix2), MAT(out));
+    DALI_FUNCTION_3_MUT(TensorOps::add, MAT(matrix1), MAT(matrix2), MAT(out), OVERWRITE);
 
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out]() {
@@ -1218,22 +1218,27 @@ template<typename R>
 Mat<R> MatOps<R>::mul(
         Mat<R> matrix1,
         Mat<R> matrix2) {
-    #ifndef DONT_COMPILE
-    assert2(matrix1.dims(1) == matrix2.dims(0), "matmul dimensions misaligned.");
-    Mat<R> out (
-        matrix1.dims(0),
-        matrix2.dims(1),
-        false);
-    MAT(out) = MAT(matrix1) * MAT(matrix2);
+    assert2(matrix1.dims(1) == matrix2.dims(0), "matrix product dimensions misaligned.");
+    Mat<R> out (matrix1.dims(0), matrix2.dims(1), false);
+
+    DALI_FUNCTION_3_MUT(TensorOps::dot, MAT(matrix1), MAT(matrix2), MAT(out),
+                                        NO_TRANSPOSE, NO_TRANSPOSE, OVERWRITE);
+
+
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out](){
-            SAFE_GRAD(matrix1).noalias() += (GRAD(out)) * ((MAT(matrix2)).transpose());
-            SAFE_GRAD(matrix2).noalias() += MAT(matrix1).transpose() * (GRAD(out));
+            if (!matrix1.constant) {
+                // matrix1.g += out.g <dot> matrix2.T
+                DALI_FUNCTION_3_MUT(TensorOps::dot, GRAD(out),    MAT(matrix2), GRAD(matrix1),
+                                                    NO_TRANSPOSE, TRANSPOSE,    ADD_TO_EXISTING);
+            }
+            if (!matrix2.constant) {
+                // matrix2.g += matrix1.T <dot> out.g
+                DALI_FUNCTION_3_MUT(TensorOps::dot, GRAD(matrix1), GRAD(out),       GRAD(matrix2),
+                                                    TRANSPOSE,     NO_TRANSPOSE,    ADD_TO_EXISTING);
+            }
         });
     return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
 }
 
 template<typename R>

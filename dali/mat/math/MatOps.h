@@ -4,10 +4,6 @@
 #include <initializer_list>
 #include <vector>
 #include <memory>
-#ifdef DALI_USE_CUDA
-#include <thrust/device_vector.h>
-#include <thrust/equal.h>
-#endif
 #include "dali/mat/Mat.h"
 #include "dali/mat/Tape.h"
 #include "dali/mat/Mat.h"
