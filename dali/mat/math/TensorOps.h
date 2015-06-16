@@ -47,7 +47,7 @@ enum OperationType {
 
 /* CUDA UTILS END HERE */
 
-#define DALI_ASSIGN(condition, out, expr) if ((op) == OVERWRITE) { out = (expr); } else {  out += (expr);  }
+#define DALI_ASSIGN(op, out, expr) if ((op) == OVERWRITE) { out = (expr); } else {  out += (expr);  }
 
 namespace TensorOps {
     using mshadow::gpu;
@@ -87,14 +87,30 @@ namespace TensorOps {
         DALI_ASSIGN(op, out, a + b)
     }
 
+    template<typename tensor_t>
+    void sub(tensor_t& a, tensor_t& b, tensor_t& out, OperationType op) {
+        DALI_ASSIGN(op, out, a - b)
+    }
+
+
     template<typename Device, int ndims, typename R>
     void add_inplace(mshadow::Tensor<Device,ndims,R> a, int num_elts, R summand) {
         a += mshadow::expr::scalar<R>(summand);
     }
 
+    template<typename Device, int ndims, typename R>
+    void sub_inplace(mshadow::Tensor<Device,ndims,R> a, int num_elts, R summand) {
+        a -= mshadow::expr::scalar<R>(summand);
+    }
+
     template<typename tensor_t>
     void add_inplace(tensor_t& a, tensor_t& dest) {
         dest += a;
+    }
+
+    template<typename tensor_t>
+    void sub_inplace(tensor_t& a, tensor_t& dest) {
+        dest -= a;
     }
 
     #ifdef DALI_USE_CUDA
@@ -188,9 +204,31 @@ namespace TensorOps {
         }
     }
 
+    template<typename R>
+    struct square_f {
+        MSHADOW_XINLINE static R Map(const R& a) {
+            return a * a;
+        }
+    };
+
+    template<typename Device, int dims, typename R>
+    void square(mshadow::Tensor<Device,dims,R>& a, mshadow::Tensor<Device,dims,R>& out, OperationType op) {
+        DALI_ASSIGN(op, out, mshadow::expr::F<square_f<R>>(a));
+    }
+
+
     template<typename tensor_t>
     void eltmul(tensor_t& a, tensor_t& b, tensor_t& out, OperationType op) {
         DALI_ASSIGN(op, out, a * b)
+    }
+
+    template<typename Device, int dims, typename R>
+    void eltmul_coefficient(mshadow::Tensor<Device,dims,R>& a,
+                            mshadow::Tensor<Device,dims,R>& b,
+                            mshadow::Tensor<Device,dims,R>& out,
+                            R coeff,
+                            OperationType op) {
+        DALI_ASSIGN(op, out, coeff * (a * b));
     }
 };
 

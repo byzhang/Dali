@@ -171,6 +171,24 @@ R* GradInternal<R>::data() {
 }
 
 template<typename R>
+void GradInternal<R>::print() const {
+    const auto& data = dw.cpu_data();
+    for (int i = 0; i < data.shape_[0] ; ++i) {
+        std::cout << (i == 0 ? "[" : " ");
+        for (int j = 0; j < data.shape_[1]; ++j) {
+            std::cout << std::fixed
+                      << std::setw( 7 ) // keep 7 digits
+                      << std::setprecision( 3 ) // use 3 decimals
+                      << std::setfill( ' ' ) // pad values with blanks this->w(i,j)
+                      << data[i][j] << " ";
+        }
+        std::cout << (i == data.shape_[0] - 1 ? "]" : "\n");
+    }
+    std::cout << std::endl;
+}
+
+
+template<typename R>
 void GradInternal<R>::clear() {
     DALI_FUNCTION_1_MUT(TensorOps::fill, dw, (R)0.0);
 }

@@ -14,8 +14,10 @@ using ::testing::AssertionFailure;
 #ifdef DALI_USE_CUDA
 // most gpus don't support double
 typedef float R;
+const float DEFAULT_GRAD_EPS=1e-3;
 #else
 typedef double R;
+const float DEFAULT_GRAD_EPS=1e-7;
 #endif
 
 #ifdef DALI_USE_CUDA
@@ -117,7 +119,7 @@ bool gradient_same(
         std::function<Mat<R>(std::vector<Mat<R>>&)> functor,
         std::vector<Mat<R>> arguments,
         R tolerance    = 1e-5,
-        R grad_epsilon = 1e-5) {
+        R grad_epsilon = DEFAULT_GRAD_EPS) {
 
     auto error = functor(arguments).sum();
     error.grad();
@@ -313,6 +315,19 @@ TEST_F(MatrixTests, addition_gradient) {
 }
 
 
+TEST_F(MatrixTests, subtraction_gradient) {
+    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+        return Xs[0] - Xs[1];
+    };
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
+        auto B = Mat<R>(10, 20,  weights<R>::uniform(0.5));
+        ASSERT_TRUE(gradient_same(functor, {A, B}));
+    }
+}
+
+
+
 TEST_F(MatrixTests, mean_gradient) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0].mean();
@@ -320,6 +335,16 @@ TEST_F(MatrixTests, mean_gradient) {
     EXPERIMENT_REPEAT {
         auto A = Mat<R>(10, 20, weights<R>::uniform(2.0));
         ASSERT_TRUE(gradient_same(functor, {A}));
+    }
+}
+
+TEST_F(MatrixTests, square_gradient) {
+    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+        return Xs[0].square();
+    };
+    EXPERIMENT_REPEAT {
+        auto A = Mat<R>(10, 20, weights<R>::uniform(0.5, 5.0));
+        ASSERT_TRUE(gradient_same(functor, {A}, 1e-4));
     }
 }
 
@@ -385,9 +410,25 @@ TEST_F(MatrixTests, log_gradient) {
     }
 }*/
 
-TEST_F(MatrixTests, matrix_dot_plus_bias) {
+TEST_F(MatrixTests, dot_gradient) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-        return Xs[1].dot(Xs[0]) + Xs[2];
+        return Xs[1].dot(Xs[0]);
+    };
+    int num_examples = 20;
+    int hidden_size = 10;
+    int input_size = 5;
+    EXPERIMENT_REPEAT {
+        auto X = Mat<R>(input_size, num_examples, weights<R>::uniform(20.0));
+        auto W = Mat<R>(hidden_size, input_size, weights<R>::uniform(2.0));
+        ASSERT_TRUE(gradient_same(functor, {X, W}, 1e-4));
+    }
+}
+
+
+// requires sum broadcast
+TEST_F(MatrixTests, DISABLED_matrix_dot_plus_bias) {
+    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
+        auto res = Xs[1].dot(Xs[0]) + Xs[2];
     };
     int num_examples = 20;
     int hidden_size = 10;

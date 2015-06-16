@@ -353,26 +353,32 @@ template<typename R>
 Mat<R> MatOps<R>::sub(
         Mat<R> matrix1,
         Mat<R> matrix2) {
-    #ifndef DONT_COMPILE
     if (matrix1.dims(1) != matrix2.dims(1) && (matrix1.dims(1) == 1 || matrix2.dims(1) == 1)) {
         if (matrix1.dims(1) == 1) {
             return sub_broadcast_reversed(matrix2, matrix1);
         }
         return sub_broadcast(matrix1, matrix2);
     }
+
+
     assert2((matrix1.dims(0) == matrix2.dims(0)) && (matrix1.dims(1) == matrix2.dims(1)),
         "Matrices cannot be subtracted, they do not have the same dimensions.");
+
     auto out = Mat<R>::empty_like(matrix1);
-    MAT(out) = MAT(matrix1) - MAT(matrix2);
+
+    DALI_FUNCTION_3_MUT(TensorOps::sub, MAT(matrix1), MAT(matrix2), MAT(out), OVERWRITE);
+
     if (graph::backprop_enabled)
         graph::emplace_back([matrix1, matrix2, out]() {
-            SAFE_GRAD(matrix1).noalias() += GRAD(out);
-            SAFE_GRAD(matrix2).noalias() -= GRAD(out);
+            if (!matrix1.constant)
+                // matrix1.dw() += out.dw()
+                DALI_FUNCTION_2_MUT(TensorOps::add_inplace, GRAD(out), GRAD(matrix1));
+            if (!matrix2.constant)
+                // matrix1.dw() += out.dw()
+                DALI_FUNCTION_2_MUT(TensorOps::sub_inplace, GRAD(out), GRAD(matrix2));
         });
+
     return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
 }
 
 template<typename R>
@@ -466,12 +472,8 @@ Mat<R> MatOps<R>::sub_broadcast_reversed(Mat<R> matrix, R other) {
 
 template<typename R>
 Mat<R> MatOps<R>::add(std::initializer_list<Mat<R>> matrices) {
-    #ifndef DONT_COMPILE
     auto matrices_vector = vector<Mat<R>>(matrices);
     return add(matrices_vector);
-    #else
-    return Mat<R>(1,1);
-    #endif
 }
 
 template<typename R>
@@ -494,17 +496,14 @@ Mat<R> MatOps<R>::add(const std::vector<Mat<R>>& matrices) {
 
 template<typename R>
 Mat<R> MatOps<R>::square(Mat<R> matrix) {
-    #ifndef DONT_COMPILE
     auto out = Mat<R>::empty_like(matrix);
-    MAT(out) = MAT(matrix).array().square();
-    if (graph::backprop_enabled)
+    DALI_FUNCTION_2_MUT(TensorOps::square, MAT(matrix), MAT(out), OVERWRITE);
+
+    if (graph::backprop_enabled && !matrix.constant)
         graph::emplace_back([matrix, out]() {
-            SAFE_GRAD(matrix).noalias() += 2.0 * ((MAT(matrix)).array() * (GRAD(out)).array()).matrix();
+            DALI_FUNCTION_3_MUT(TensorOps::eltmul_coefficient, MAT(matrix), GRAD(out), GRAD(matrix), (R)2.0, ADD_TO_EXISTING);
         });
     return out;
-    #else
-    return Mat<R>(1,1);
-    #endif
 }
 
 template<typename R>
@@ -562,18 +561,19 @@ Mat<R> MatOps<R>::fill(Mat<R> matrix, R filler) {
 
 template<typename R>
 Mat<R> MatOps<R>::pow(Mat<R> matrix, R other) {
-    #ifndef DONT_COMPILE
-    if (other == (R) -1.0) {
+    if (std::abs(other - (R)-1.0) < 1e-9) {
         return MatOps<R>::elt_inv(matrix);
-    } else if (other == (R) 0.0){
+    } else if (std::abs(other - (R)0.0) < 1e-9) {
         return MatOps<R>::fill(matrix, 1.0);
-    } else if (other == (R)0.5) {
+    } else if (std::abs(other - (R)0.5) < 1e-9) {
         return MatOps<R>::sqrt(matrix);
-    } else if (other == (R)1.0) {
+    } else if (std::abs(other - (R)1.0) < 1e-9) {
         return matrix;
-    } else if (other == (R)2.0) {
+    } else if (std::abs(other - (R)2.0) < 1e-9) {
         return MatOps<R>::square(matrix);
     }
+
+    #ifndef DONT_COMPILE
     auto out = Mat<R>::empty_like(matrix);
     MAT(out) = MAT(matrix).array().pow(other);
     if (graph::backprop_enabled)
@@ -1224,18 +1224,20 @@ Mat<R> MatOps<R>::mul(
     DALI_FUNCTION_3_MUT(TensorOps::dot, MAT(matrix1), MAT(matrix2), MAT(out),
                                         NO_TRANSPOSE, NO_TRANSPOSE, OVERWRITE);
 
-
     if (graph::backprop_enabled)
-        graph::emplace_back([matrix1, matrix2, out](){
+        graph::emplace_back([matrix1, matrix2, out]() {
             if (!matrix1.constant) {
+
+
                 // matrix1.g += out.g <dot> matrix2.T
                 DALI_FUNCTION_3_MUT(TensorOps::dot, GRAD(out),    MAT(matrix2), GRAD(matrix1),
                                                     NO_TRANSPOSE, TRANSPOSE,    ADD_TO_EXISTING);
             }
             if (!matrix2.constant) {
                 // matrix2.g += matrix1.T <dot> out.g
-                DALI_FUNCTION_3_MUT(TensorOps::dot, GRAD(matrix1), GRAD(out),       GRAD(matrix2),
+                DALI_FUNCTION_3_MUT(TensorOps::dot, MAT(matrix1), GRAD(out),       GRAD(matrix2),
                                                     TRANSPOSE,     NO_TRANSPOSE,    ADD_TO_EXISTING);
+
             }
         });
     return out;

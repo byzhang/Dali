@@ -77,6 +77,8 @@ class GradInternal {
         const R* data() const;
         R* data();
 
+        void print() const;
+
         void clear();
 
         operator mat_storage_t();
