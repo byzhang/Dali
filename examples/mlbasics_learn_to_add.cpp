@@ -69,8 +69,8 @@ int main( int argc, char* argv[]) {
             // auto www = W.w()->w.mutable_gpu_data();
             // auto wwwddd = W.dw()->dw.mutable_gpu_data();
             // www -= LR * wwwddd;
+            // std::cout << W.w()->w.gpu_fresh << std::endl;
         }
-        std::cout << W.w()->w.gpu_fresh << std::endl;
         // Reset gradients
         W.clear_grad();
     }
