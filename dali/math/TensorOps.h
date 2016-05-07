@@ -210,7 +210,127 @@ namespace TensorOps {
     }
 
     namespace arg {
-        #ifdef DALI_USE_CUDA
+        template <typename R, int dimension>
+        std::vector<int> argsort(const mshadow::Tensor<cpu, dimension, R> A, int num_elts) {
+            std::vector<int> arguments(num_elts);
+            // initialize ordering data:
+            for (int i=0;i<num_elts;i++)
+                arguments[i] = i;
+
+            auto ptr = A.dptr_;
+            // sort in increasing order
+            std::sort(arguments.begin(), arguments.end(), [&ptr](const int& lhs, const int& rhs) {
+                return *(ptr + lhs) < *(ptr + rhs);
+            });
+            return arguments;
+        }
+
+        template<typename Class>
+        class Arger {
+            public:
+                template<typename R, typename Device, int dimension>
+                static std::vector<int> apply(const mshadow::Tensor<Device, dimension, R> A, int reduce_dim) {
+                    ASSERT2(false, utils::MS() << "Operation not supported for tensor with dimension " << dimension);
+                    return {};
+                }
+
+                template<typename R>
+                static std::vector<int> apply(const mshadow::Tensor<cpu, 1, R> A, int reduce_dim) {
+                    return apply_ptr(A.dptr_, A.shape_[0] );
+                }
+
+                template<typename R>
+                static std::vector<int> apply(const mshadow::Tensor<cpu, 2, R> A, int reduce_dim) {
+                    const int num_rows = A.shape_[0];
+                    const int num_cols = A.shape_[1];
+                    if (reduce_dim == 1) {
+                        std::vector<int> arguments(num_rows);
+                        for (int i = 0; i < num_rows; i++) {
+                            arguments[i] = 0;
+                            for (int j = 0; j < num_cols; j++) {
+                                if ( Class::compare(*(A.dptr_ + (A.stride_ * i) + j), *(A.dptr_ + (A.stride_ * i) + arguments[i]) )) {
+                                    arguments[i] = j;
+                                }
+                            }
+                        }
+                        return arguments;
+                    } else if (reduce_dim == 0) {
+                        std::vector<int> arguments(num_cols);
+                        for (int j = 0; j < num_cols; j++) {
+                            arguments[j] = 0;
+                            for (int i = 0; i < num_rows; i++) {
+                                if ( Class::compare(*(A.dptr_ + (A.stride_ * i) + j), *(A.dptr_ + (A.stride_ * arguments[j]) + j) )) {
+                                    arguments[j] = i;
+                                }
+                            }
+                        }
+                        return arguments;
+                    } else {
+                        throw std::runtime_error("argmax can only be used with axis equal to 0 or 1.");
+                    }
+                }
+
+                template<typename R>
+                static std::vector<int> apply_ptr(const R* start, const int num_elts) {
+                    std::vector<int> offset_row(1, 0);
+                    int& offset = offset_row[0];
+                    for (int i = 0; i < num_elts; i++) {
+                        if (Class::compare(*(start + i), *(start + offset))) {
+                            offset = i;
+                        }
+                    }
+                    return offset_row;
+                }
+        };
+
+        struct Argmax : public Arger<Argmax> {
+            template<typename R>
+            static MSHADOW_XINLINE bool compare(const R& left, const R& right) {
+                return left > right;
+            }
+#ifdef DALI_USE_CUDA
+            template<typename R>
+            static thrust::device_ptr<R> thrust_compare(thrust::device_ptr<R> start, thrust::device_ptr<R> end) {
+                return std::max_element(start, end);
+            }
+#endif
+        };
+
+        struct Argmin : public Arger<Argmin> {
+            template<typename R>
+            static MSHADOW_XINLINE bool compare(const R& left, const R& right) {
+                return left < right;
+            }
+
+#ifdef DALI_USE_CUDA
+            template<typename R>
+            static thrust::device_ptr<R> thrust_compare(thrust::device_ptr<R> start, thrust::device_ptr<R> end) {
+                return std::min_element(start, end);
+            }
+#endif
+        };
+
+        template<typename R, typename Device, int dimension>
+        std::vector<int> argmin(const mshadow::Tensor<Device, dimension, R>& A, int reduce_dim) {
+            return Argmin::apply(A, reduce_dim);
+        }
+
+        template<typename R, typename Device, int dimension>
+        std::vector<int> argmax(const mshadow::Tensor<Device, dimension, R>& A, int reduce_dim) {
+            return Argmax::apply(A, reduce_dim);
+        }
+
+        template<typename R>
+        std::vector<int> argmin(const R* ptr, int number_of_elements) {
+            return Argmin::apply_ptr(ptr, number_of_elements);
+        }
+
+        template<typename R>
+        std::vector<int> argmax(const R* ptr, int number_of_elements) {
+            return Argmax::apply_ptr(ptr, number_of_elements);
+        }
+
+#ifdef DALI_USE_CUDA
         // Convert a linear index to a row index
         template <typename R>
         struct linear_index_to_row_index : public thrust::unary_function<R,R> {
@@ -271,17 +391,10 @@ namespace TensorOps {
         THRUST_COMP_KERNEL(<=, argmin_op);
         THRUST_COMP_KERNEL(>=, argmax_op);
 
-        // declare this operation exists for every dimension (then specialize)
-        template <typename R, int dimension>
-        std::vector<int> argmin(const mshadow::Tensor<gpu, dimension, R> A);
-        // declare this operation exists for every dimension (then specialize)
-        template <typename R, int dimension>
-        std::vector<int> argmax(const mshadow::Tensor<gpu, dimension, R> A);
-
         // specialize for kernel
         #define THRUST_KERNEL_ROWWISE_FROM_2D_MSHADOW( kernel_name, fname ) \
             template <typename R> \
-            std::vector<int> fname (const mshadow::Tensor<gpu, 2, R> A, int reduce_dim) { \
+            std::vector<int> fname <R, gpu, 2>::apply (const mshadow::Tensor<gpu, 2, R> A, int reduce_dim) { \
                 int num_rows = A.shape_[0]; \
                 int num_cols = A.shape_[1]; \
                 if (reduce_dim == 0) {\
@@ -291,7 +404,7 @@ namespace TensorOps {
                     mshadow::Tensor<gpu, 2, R> A_T( mshadow::Shape2(num_cols, num_rows));\
                     mshadow::AllocSpace(&A_T, false);\
                     A_T = A.T();\
-                    auto sorted = fname ( A_T , 1 );\
+                    auto sorted = fname <R, gpu, 2>::apply ( A_T , 1 );\
                     mshadow::FreeSpace(&A_T);\
                     return sorted;\
                 } else if (reduce_dim == 1) {\
@@ -323,8 +436,8 @@ namespace TensorOps {
                 }\
             }
 
-        THRUST_KERNEL_ROWWISE_FROM_2D_MSHADOW( argmin_op, argmin )
-        THRUST_KERNEL_ROWWISE_FROM_2D_MSHADOW( argmax_op, argmax )
+        THRUST_KERNEL_ROWWISE_FROM_2D_MSHADOW( argmin_op, Argmin )
+        THRUST_KERNEL_ROWWISE_FROM_2D_MSHADOW( argmax_op, Argmax )
 
         template <typename R, int dimension>
         std::vector<int> argsort(const mshadow::Tensor<gpu, dimension, R> A, int num_elts) {
@@ -356,7 +469,7 @@ namespace TensorOps {
 
         #define THRUST_KERNEL_ROWWISE_FROM_1D_MSHADOW( thrust_op_name, fname ) \
             template <typename R> \
-            std::vector<int> fname (const mshadow::Tensor<gpu, 1, R> A, int reduce_dim) { \
+            std::vector<int> fname <R, gpu, 1>::apply (const mshadow::Tensor<gpu, 1, R> A, int reduce_dim) { \
                 auto start = to_thrust(A);\
                 return fname ( start, A.shape_[0] );\
             }
@@ -364,93 +477,11 @@ namespace TensorOps {
         THRUST_KERNEL_ROWWISE_FROM_1D_GPU_PTR( thrust::min_element , argmin )
         THRUST_KERNEL_ROWWISE_FROM_1D_GPU_PTR( thrust::max_element , argmax )
 
-        THRUST_KERNEL_ROWWISE_FROM_1D_MSHADOW( thrust::min_element , argmin )
-        THRUST_KERNEL_ROWWISE_FROM_1D_MSHADOW( thrust::max_element , argmax )
+        THRUST_KERNEL_ROWWISE_FROM_1D_MSHADOW( thrust::min_element , Argmin )
+        THRUST_KERNEL_ROWWISE_FROM_1D_MSHADOW( thrust::max_element , Argmax )
 
-        #endif
+#endif
 
-        template <typename R, int dimension>
-        std::vector<int> argsort(const mshadow::Tensor<cpu, dimension, R> A, int num_elts) {
-            std::vector<int> arguments(num_elts);
-            // initialize ordering data:
-            for (int i=0;i<num_elts;i++)
-                arguments[i] = i;
-
-            auto ptr = A.dptr_;
-            // sort in increasing order
-            std::sort(arguments.begin(), arguments.end(), [&ptr](const int& lhs, const int& rhs) {
-                return *(ptr + lhs) < *(ptr + rhs);
-            });
-            return arguments;
-        }
-
-        // declare this operation exists for every dimension (then specialize)
-        template <typename R, int dimension>
-        std::vector<int> argmin(const mshadow::Tensor<cpu, dimension, R> A, int reduce_dim);
-
-        // declare this operation exists for every dimension (then specialize)
-        template <typename R, int dimension>
-        std::vector<int> argmax(const mshadow::Tensor<cpu, dimension, R> A, int reduce_dim);
-
-        #define CPU_KERNEL_ROWWISE_FROM_2D_MSHADOW( fname , opsymbol ) \
-            template <typename R> \
-            std::vector<int> fname (const mshadow::Tensor<cpu, 2, R> A, int reduce_dim) {\
-                const int num_rows = A.shape_[0];\
-                const int num_cols = A.shape_[1];\
-                if (reduce_dim == 1) {\
-                    std::vector<int> arguments(num_rows);\
-                    for (int i = 0; i < num_rows; i++) {\
-                        arguments[i] = 0;\
-                        for (int j = 0; j < num_cols; j++) {\
-                            if (  *(A.dptr_ + (A.stride_ * i) + j) opsymbol *(A.dptr_ + (A.stride_ * i) + arguments[i]) ) {\
-                                arguments[i] = j;\
-                            }\
-                        }\
-                    }\
-                    return arguments;\
-                } else if (reduce_dim == 0) {\
-                    std::vector<int> arguments(num_cols);\
-                    for (int j = 0; j < num_cols; j++) {\
-                        arguments[j] = 0;\
-                        for (int i = 0; i < num_rows; i++) {\
-                            if ( *(A.dptr_ + (A.stride_ * i) + j) opsymbol *(A.dptr_ + (A.stride_ * arguments[j]) + j) ) {\
-                                arguments[j] = i;\
-                            }\
-                        }\
-                    }\
-                    return arguments;\
-                } else {\
-                    throw std::runtime_error("argmax can only be used with axis equal to 0 or 1.");\
-                }\
-            }
-
-        #define CPU_KERNEL_ROWWISE_FROM_1D_PTR( fname, opsymbol ) \
-            template <typename R>\
-            std::vector<int> fname (const R* start, const int num_elts) { \
-                std::vector<int> offset_row(1, 0);\
-                int& offset = offset_row[0];\
-                for (int i = 0; i < num_elts; i++) {\
-                    if (*(start + i) opsymbol *(start + offset)) {\
-                        offset = i;\
-                    }\
-                }\
-                return offset_row;\
-            }
-
-        #define CPU_KERNEL_ROWWISE_FROM_1D_MSHADOW( fname ) \
-            template <typename R>\
-            std::vector<int> fname (const mshadow::Tensor<cpu, 1, R> A, int reduce_dim) { \
-                return fname (A.dptr_ , A.shape_[0] );\
-            }
-
-        CPU_KERNEL_ROWWISE_FROM_2D_MSHADOW( argmax, > )
-        CPU_KERNEL_ROWWISE_FROM_2D_MSHADOW( argmin, < )
-
-        CPU_KERNEL_ROWWISE_FROM_1D_PTR(  argmax, > )
-        CPU_KERNEL_ROWWISE_FROM_1D_PTR(  argmin, < )
-
-        CPU_KERNEL_ROWWISE_FROM_1D_MSHADOW( argmax )
-        CPU_KERNEL_ROWWISE_FROM_1D_MSHADOW( argmin )
     }
 
     template<int ndims, typename R>
