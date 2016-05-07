@@ -332,14 +332,24 @@ namespace matops {
             utils::MS() << "four_d_shape argument to patch2col must be a size "
                         << "4 vector (got " << four_d_shape.size() << ")"
         );
+        ASSERT2(kernel_height > 0 && kernel_width > 0 && kernel_stride > 0,
+            utils::MS() << "kernel height, width, and stride should be strictly positive (got "
+                        << "height = " << kernel_height << ", width = " << kernel_width << ", and "
+                        << "stride = " << kernel_stride << " instead)."
+        );
         ASSERT2(four_d_shape[0] > 0 && four_d_shape[1] > 0 && four_d_shape[2] > 0 && four_d_shape[3] > 0,
-            "4d shape dimensions should be strictly positive");
+            "4d shape dimensions should be strictly positive.");
         int vol = (four_d_shape[0] * four_d_shape[1] * four_d_shape[2] * four_d_shape[3]);
         ASSERT2(matrix.number_of_elements() == vol,
             utils::MS() << "hypercube volume of 4d shape different (" << vol
                         << ") from number of elements in matrix ("
                         << matrix.number_of_elements() << ")."
         );
+
+        ASSERT2(four_d_shape[3] >= kernel_width && four_d_shape[2] >= kernel_height,
+                utils::MS() << "patch2col requires kernel width and height to be less than or equal to image dimensions "
+                            << "(got kernel " << kernel_height << "x" << kernel_width << " with image shape "
+                            << four_d_shape[2] << "x" << four_d_shape[3] << ").");
 
         int oheight  = (four_d_shape[2] - kernel_height) / kernel_stride + 1;
         int owidth   = (four_d_shape[3] - kernel_width) / kernel_stride + 1;
