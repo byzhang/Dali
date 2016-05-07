@@ -547,11 +547,10 @@ TEST_F(MatrixTests, argmax_argmin) {
     B.w(3,0) = -35.0;
     B.w(4,2) = -32.0;
     B.w(5,3) = -27.0;
-    #ifdef DALI_USE_CUDA
+#ifdef DALI_USE_CUDA
     // force computation to happen on device if possible
     B.w().memory().to_gpu();
-    #endif
-
+#endif
     auto indices_min_col = B.argmin(0);
     EXPECT_EQ(indices_min_col, std::vector<int>({3, 0, 4, 1, 2}));
 
@@ -562,10 +561,10 @@ TEST_F(MatrixTests, argmax_argmin) {
     Z.w(12) = 55;
 
     Z.w(13) = -12;
-    #ifdef DALI_USE_CUDA
+#ifdef DALI_USE_CUDA
     // force computation to happen on device if possible
     Z.w().memory().to_gpu();
-    #endif
+#endif
 
     // argmin without dimension argument treats
     // matrix as one long strand of memory

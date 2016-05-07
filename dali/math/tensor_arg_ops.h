@@ -120,9 +120,9 @@ namespace TensorOps {
                         for (int i = 0; i < num_rows; i++) {
                             arguments[i] = 0;
                             for (int j = 0; j < num_cols; j++) {
-                                if ( Class::compare(*(A.dptr_ + (A.stride_ * i) + j), *(A.dptr_ + (A.stride_ * i) + arguments[i]) )) {
-                                    arguments[i] = j;
-                                }
+                                auto rleft = (A.dptr_ + (A.stride_ * i) + j);
+                                auto rright = (A.dptr_ + (A.stride_ * i) + arguments[i]);
+                                if (!Class::compare(*rright, *rleft)) arguments[i] = j;
                             }
                         }
                         return arguments;
@@ -131,9 +131,9 @@ namespace TensorOps {
                         for (int j = 0; j < num_cols; j++) {
                             arguments[j] = 0;
                             for (int i = 0; i < num_rows; i++) {
-                                if ( Class::compare(*(A.dptr_ + (A.stride_ * i) + j), *(A.dptr_ + (A.stride_ * arguments[j]) + j) )) {
-                                    arguments[j] = i;
-                                }
+                                auto rleft = (A.dptr_ + (A.stride_ * i) + j);
+                                auto rright = (A.dptr_ + (A.stride_ * arguments[j]) + j);
+                                if (!Class::compare(*rright, *rleft)) arguments[j] = i;
                             }
                         }
                         return arguments;
@@ -198,11 +198,10 @@ namespace TensorOps {
                         throw std::runtime_error("Operation can only be used with axis equal to 0 or 1.");
                     }
                 }
-
                 // following the advice from this Stackoverflow:
                 // http://stackoverflow.com/questions/7709181/finding-the-maximum-element-value-and-its-position-using-cuda-thrust
                 template <typename R>
-                static std::vector<int> apply (thrust::device_ptr<R> start, int n_elements) {
+                static std::vector<int> apply(const thrust::device_ptr<R>& start, int n_elements) {
                     auto idx = Class::thrust_compare(start, start + n_elements);
                     return { (int) (&idx[0] - &start[0]) };
                 }
@@ -230,7 +229,7 @@ namespace TensorOps {
         struct Argmin : public Arger<Argmin> {
             template<typename R>
             static MSHADOW_XINLINE bool compare(const R& left, const R& right) {
-                return left < right;
+                return left <= right;
             }
 
 #ifdef DALI_USE_CUDA
