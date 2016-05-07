@@ -1,6 +1,6 @@
 #include "dali/math/LazyTensor.h"
-#include "mshadow/extension/unpack_patch2col.h"
-#include "mshadow/extension/pack_col2patch.h"
+#include <mshadow/extension/unpack_patch2col.h>
+#include <mshadow/extension/pack_col2patch.h>
 
 #ifdef DALI_USE_CUDA
 template<typename TA, typename TB, typename DType, int dimension, int ta>

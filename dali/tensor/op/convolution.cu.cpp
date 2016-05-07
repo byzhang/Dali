@@ -3,7 +3,10 @@
 #include "dali/tensor/__MatMacros__.h"
 #include "dali/math/TensorOps.h"
 #include "dali/math/LazyTensor.h"
+#include "dali/math/lazy_swapaxis.h"
+#include "dali/math/lazy_patch2col.h"
 #include "dali/math/TensorConvolution.h"
+#include "dali/tensor/op/reshaping.h"
 
 using utils::assert2;
 using utils::MS;
@@ -15,73 +18,128 @@ namespace matops {
     // Note if kernel is 3D (as in multi kernel)
     // Then result must also be a tensor (first dimension is kernel dimension)
     template<typename R>
-    Mat<R> Convolution<R>::conv2d(Mat<R> image, Mat<R> kernel) {
-        // assert2(image.dims(0) >= kernel.dims(0),
-        //     MS() << "Kernel's first dimension (" << kernel.dims(0)
-        //          << ") must be smaller than or equal to argument's first dimension ("
-        //          << image.dims(0));
-        // assert2(image.dims(1) >= kernel.dims(1),
-        //     MS() << "Kernel's second dimension (" << kernel.dims(1)
-        //          << ") must be smaller than or equal to argument's first dimenion ("
-        //          << image.dims(1));
+    Mat<R> Convolution<R>::conv2d(
+            Mat<R> image,
+            Mat<R> kernels,
+            const std::vector<int>& image_shape,
+            const int& kernel_height,
+            const int& kernel_width,
+            const int& kernel_stride) {
 
-        // auto out = Mat<R>(
-        //     image.dims(0) - kernel.dims(0) + 1, // as many times as the kernel fits
-        //     image.dims(1) - kernel.dims(1) + 1, // as many times as the kernel fits
-        //     false // fill zeros
-        // );
-        // auto& out_mat = GET_MAT(out);
-        // auto& image_mat = GET_MAT(image);
-        // auto& kernel_mat = GET_MAT(kernel);
-        // int col=0,
-        //     row=0,
-        //     KSizeX = kernel.dims(0),
-        //     KSizeY = kernel.dims(1),
-        //     SizeX  = image.dims(0),
-        //     SizeY  = image.dims(1);
-        // R kernel_sum = kernel_mat.sum();
+        auto patched_image = Reshaping<R>::patch2col_no_grad(
+            image,
+            image_shape,
+            kernel_height,
+            kernel_width,
+            kernel_stride
+        );
+        Mat<R> out_wrong_arrangement(
+            kernels.dims(0),
+            patched_image.dims(1),
+            weights<R>::empty()
+        );
+        // convolve kernels with extracted image patches (now viewed
+        // as columns)
 
-        // for ( row = 0; row < out.dims(0); row++ ) {
-        //     for ( col = 0; col < out.dims(1); col++ ) {
-        //         out_mat(row,col) = (image_mat.block(row, col, KSizeX, KSizeY).array() * kernel_mat.array()).sum() / kernel_sum;
-        //     }
-        // }
-        // if (graph::backprop_enabled()) {
-        //     graph::emplace_back([image, kernel, out, kernel_sum](){
-        //         auto& image_mat = GET_MAT(image);
-        //         auto& kernel_mat = GET_MAT(kernel);
-        //         int col=0,
-        //             row=0,
-        //             KSizeX = kernel.dims(0),
-        //             KSizeY = kernel.dims(1),
-        //             SizeX  = image.dims(0),
-        //             SizeY  = image.dims(1);
-        //         bool grad_image = !image.constant;
-        //         bool grad_kernel = !kernel.constant;
-        //         auto& out_grad = GET_GRAD(out);
-        //         auto& out_weight = GET_MAT(out);
-        //         R kern_sum_squared = kernel_sum * kernel_sum;
+        MAT(out_wrong_arrangement) = dot(
+            MAT(kernels).wrapper(),
+            MAT(patched_image).wrapper()
+        );
 
-        //         if (grad_image || grad_kernel) {
-        //             if (grad_kernel) {
-        //                 GET_GRAD(kernel).array() -= (out_weight.array() * out_grad.array() / (kernel_sum)).sum();
-        //             }
-        //             for ( row = 0; row < out.dims(0); row++ ) {
-        //                 for ( col = 0; col < out.dims(1); col++ ) {
-        //                     if (grad_image) {
-        //                         GET_GRAD(image).block(row, col, KSizeX, KSizeY).noalias() += kernel_mat * (out_grad(row, col) / kernel_sum);
-        //                     }
-        //                 #include "dali/utils.h"
-        // if (grad_kernel) {
-        //                         GET_GRAD(kernel).noalias() += (image_mat.block(row, col, KSizeX, KSizeY).array() * (out_grad(row, col) / (kernel_sum))).matrix();
-        //                     }
-        //                 }
-        //             }
-        //         }
-        //     });
-        // }
-        // return out;
-        return Mat<R>(1,1);
+        int oheight  = (image_shape[2] - kernel_height)/kernel_stride + 1;
+        int owidth   = (image_shape[3] - kernel_width)/kernel_stride + 1;
+        int nbatch   = image_shape[0];
+        int nfilters = kernels.dims(0);
+
+        Mat<R> out(
+            nbatch,
+            nfilters * oheight * owidth,
+            weights<R>::empty()
+        );
+        // present activations back in their 4d shape:
+        MAT(out).reshape(mshadow::Shape4(nbatch, nfilters, oheight, owidth)) = (
+            swapaxis<1,0>(
+                MAT(out_wrong_arrangement).reshape(
+                    mshadow::Shape4(nfilters, nbatch, oheight, owidth)
+                ).wrapper()
+            )
+        );
+
+        // during backprop we do not keep the extracted patches
+        // but instead keep the original image (because of the aliasing
+        // present in patched_image we can save memory by recomputing patch2col
+        // during backprop)
+        if (graph::backprop_enabled() && (!image.constant || !kernels.constant))
+            graph::emplace_back([
+                    out,
+                    image,
+                    kernels,
+                    image_shape,
+                    nfilters,
+                    nbatch,
+                    oheight,
+                    owidth,
+                    kernel_height,
+                    kernel_width,
+                    kernel_stride] () {
+                // run patching once more
+                auto patched_image = Reshaping<R>::patch2col_no_grad(
+                    image,
+                    image_shape,
+                    kernel_height,
+                    kernel_width,
+                    kernel_stride
+                );
+
+                // return activations to a 2d shape (from 4D above)
+                TensorInternal<R, 2> activations_2d(
+                    mshadow::Shape2(
+                        nfilters, nbatch * oheight * owidth
+                    )
+                );
+                activations_2d.reshape(
+                    mshadow::Shape4(nfilters, nbatch, oheight, owidth)
+                ) = swapaxis<1,0>(
+                    GRAD(out).reshape(
+                        mshadow::Shape4(nfilters, nbatch, oheight, owidth)
+                    ).wrapper()
+                );
+
+                // backprop dot-product
+                if (!kernels.constant) {
+                    GRAD(kernels) = dot(
+                        activations_2d.wrapper(),
+                        MAT(patched_image).wrapper().T()
+                    );
+                }
+                if (!image.constant) {
+                    // backprop image gradients into
+                    // the patch-columns
+                    GRAD(patched_image) = dot(
+                        MAT(kernels).wrapper().T(),
+                        activations_2d.wrapper()
+                    );
+
+                    auto image_4dshape = mshadow::Shape4(
+                        image_shape[0],
+                        image_shape[1],
+                        image_shape[2],
+                        image_shape[3]
+                    );
+
+                    // re-pack the patched columns
+                    // into the original image
+                    GRAD(image).reshape(image_4dshape) += pack_col2patch(
+                        GRAD(patched_image).wrapper(),
+                        image_4dshape,
+                        kernel_height,
+                        kernel_width,
+                        kernel_stride
+                    );
+                }
+            });
+
+        return out;
     }
 
     template<typename R>

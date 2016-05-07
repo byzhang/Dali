@@ -488,6 +488,36 @@ TEST_F(MatrixTests, patch2col) {
     }
 }
 
+TEST_F(MatrixTests, patch2col_conv2d) {
+    int nbatch = 2;
+    int feats = 3;
+    int width = 10;
+    int height = 4;
+
+    int kwidth = 3;
+    int kheight = 2;
+    int kstride = 2;
+
+    int num_kernels = 2;
+
+    auto functor = [&](vector<Mat<R>> Xs)-> Mat<R> {
+        auto out = MatOps<R>::conv2d(
+            Xs[0],
+            Xs[1],
+            {nbatch, feats, height, width},
+            kheight,
+            kwidth,
+            kstride
+        );
+        return out;
+    };
+    EXPERIMENT_REPEAT {
+        Mat<R> image(nbatch, feats * width * height, weights<R>::uniform(2.0));
+        Mat<R> kernels(num_kernels, feats * kwidth * kheight, weights<R>::uniform(2.0));
+        ASSERT_TRUE(gradient_same(functor, {image, kernels}));
+    }
+}
+
 TEST_F(MatrixTests, subtraction) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0] - Xs[1];
@@ -1498,66 +1528,6 @@ TEST_F(MatOpsTests, DISABLED_matrix_conv1d_grad) {
         auto kernel2 = Mat<R>(5, 5, weights<R>::uniform(-20.0, 20.0));
         auto image = Mat<R>(5, 20, weights<R>::uniform(-20.0, 20.0));
         ASSERT_TRUE(gradient_same(functor, {image, kernel1, kernel2}, 1e-2));
-    }
-}
-
-TEST_F(MatOpsTests, DISABLED_matrix_conv2d) {
-    /*graph::NoBackprop nb;
-
-    auto image = Mat<R>(10, 10);
-    int block_width  = 4,
-        block_offset = 3,
-        kernel_width = 3,
-        kernel_height = 3;
-    R filler = 2.0;
-
-    image.w()->w.block(
-        block_offset,
-        block_offset,
-        block_width,
-        block_width).fill(filler);
-
-    auto kernel = Mat<R>(kernel_width, kernel_height);
-
-    kernel = MatOps<R>::fill(kernel, 1);
-
-    auto out = MatOps<R>::conv2d(image, kernel);
-
-    auto expected = Mat<R>(
-        image.dims(0) - kernel.dims(0) + 1,
-        image.dims(1) - kernel.dims(1) + 1);
-
-    expected.w()->w.block(
-        block_offset,
-        block_offset,
-        block_width - kernel_width + 1,
-        block_width - kernel_height + 1).fill(filler);
-
-    ASSERT_EQ( (*out.sum().w())(0), (block_width * block_width * filler)) << "Sum of convolution with image should be sum of image";
-
-    // TODO: test more properties here.
-    ASSERT_TRUE((
-        expected.w()->w.block(
-            block_offset,
-            block_offset,
-            block_width - kernel_width + 1,
-            block_width - kernel_height + 1).array() ==
-        out.w()->w.block(
-            block_offset,
-            block_offset,
-            block_width - kernel_width + 1,
-            block_width - kernel_height + 1).array()).all()) << "Center of kernel activations should match up.";
-*/
-}
-
-TEST_F(MatOpsTests, DISABLED_matrix_conv2d_grad) {
-    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-        return MatOps<R>::conv2d(Xs[0], Xs[1]).tanh();
-    };
-    EXPERIMENT_REPEAT {
-        auto kernel = Mat<R>(5, 5, weights<R>::uniform(-20.0, 20.0));
-        auto image = Mat<R>(8, 8, weights<R>::uniform(-20.0, 20.0));
-        ASSERT_TRUE(gradient_same(functor, {image, kernel}, 1e-4));
     }
 }
 
