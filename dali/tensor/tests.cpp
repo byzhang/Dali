@@ -474,7 +474,13 @@ TEST_F(MatrixTests, patch2col) {
     int kstride = 2;
 
     auto functor = [&](vector<Mat<R>> Xs)-> Mat<R> {
-        return MatOps<R>::patch2col(Xs[0], {nbatch, feats, height, width}, kheight, kwidth, kstride);
+        return MatOps<R>::patch2col(
+            Xs[0],
+            {nbatch, feats, height, width},
+            kheight,
+            kwidth,
+            kstride
+        );
     };
     EXPERIMENT_REPEAT {
         Mat<R> image(nbatch, feats * width * height, weights<R>::uniform(2.0));
