@@ -595,11 +595,17 @@ DALI_TENSOR_INTERNAL_RESIZE(int);
     template \
     TensorInternal<dtype,todim> TensorInternal<dtype,fromdim>::reshape<todim>(mshadow::Shape<todim> newshape, int) const\
 
+#define DALI_TENSOR_RESHAPE_INSTANTIATES_SUBSHAPE(dtype, primary_dim)\
+    DALI_TENSOR_RESHAPE_INSTANTIATE(dtype, primary_dim, 1);\
+    DALI_TENSOR_RESHAPE_INSTANTIATE(dtype, primary_dim, 2);\
+    DALI_TENSOR_RESHAPE_INSTANTIATE(dtype, primary_dim, 3);\
+    DALI_TENSOR_RESHAPE_INSTANTIATE(dtype, primary_dim, 4);\
+
 #define DALI_TENSOR_RESHAPE_INSTANTIATES(dtype)\
-    DALI_TENSOR_RESHAPE_INSTANTIATE(dtype, 2, 1);\
-    DALI_TENSOR_RESHAPE_INSTANTIATE(dtype, 2, 2);\
-    DALI_TENSOR_RESHAPE_INSTANTIATE(dtype, 1, 1);\
-    DALI_TENSOR_RESHAPE_INSTANTIATE(dtype, 1, 2);\
+    DALI_TENSOR_RESHAPE_INSTANTIATES_SUBSHAPE(dtype, 1);\
+    DALI_TENSOR_RESHAPE_INSTANTIATES_SUBSHAPE(dtype, 2);\
+    DALI_TENSOR_RESHAPE_INSTANTIATES_SUBSHAPE(dtype, 3);\
+    DALI_TENSOR_RESHAPE_INSTANTIATES_SUBSHAPE(dtype, 4);\
 
 DALI_TENSOR_RESHAPE_INSTANTIATES(float);
 DALI_TENSOR_RESHAPE_INSTANTIATES(int);
@@ -612,10 +618,12 @@ template class TensorInternal<int,1>;
 template class TensorInternal<float, 2>;
 template class TensorInternal<double,2>;
 template class TensorInternal<int,2>;
-// template class TensorInternal<float, 3>;
-// template class TensorInternal<double,3>;
-// template class TensorInternal<float, 4>;
-// template class TensorInternal<double,4>;
+template class TensorInternal<float, 3>;
+template class TensorInternal<double,3>;
+template class TensorInternal<int,3>;
+template class TensorInternal<float, 4>;
+template class TensorInternal<double,4>;
+template class TensorInternal<int,4>;
 // template class TensorInternal<float, 5>;
 // template class TensorInternal<double,5>;
 // template class TensorInternal<float, 6>;

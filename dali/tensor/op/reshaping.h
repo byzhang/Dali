@@ -27,7 +27,29 @@ namespace matops {
         static Mat<R> slice(Mat<R>, int, int);
         static Mat<R> reshape(Mat<R>, int, int);
         static void resize(Mat<R>& mat, dim_t rows, dim_t cols);
-    };
+
+        // convert a 4d tensor into patches
+        // shape argument is treated as follows:
+        //
+        // 0 -> batch
+        // 1 -> features / channels
+        // 2 -> height
+        // 3 -> width
+        //
+        static Mat<R> patch2col_no_grad(
+            Mat<R> matrix,
+            const std::vector<int>& four_d_shape,
+            const int& kernel_width,
+            const int& kernel_height,
+            const int& kernel_stride);
+
+        static Mat<R> patch2col(
+            Mat<R> matrix,
+            const std::vector<int>& four_d_shape,
+            const int& kernel_width,
+            const int& kernel_height,
+            const int& kernel_stride);
+            };
 }
 
 #endif

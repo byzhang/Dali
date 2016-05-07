@@ -463,6 +463,25 @@ TEST_F(MatrixTests, reshape) {
     ASSERT_EQ(&subblock.dw().memory() , &block.dw().memory());
 }
 
+TEST_F(MatrixTests, patch2col) {
+    int nbatch = 2;
+    int feats = 3;
+    int width = 10;
+    int height = 4;
+
+    int kwidth = 3;
+    int kheight = 2;
+    int kstride = 2;
+
+    auto functor = [&](vector<Mat<R>> Xs)-> Mat<R> {
+        return MatOps<R>::patch2col(Xs[0], {nbatch, feats, height, width}, kheight, kwidth, kstride);
+    };
+    EXPERIMENT_REPEAT {
+        Mat<R> image(nbatch, feats * width * height, weights<R>::uniform(2.0));
+        ASSERT_TRUE(gradient_same(functor, {image}));
+    }
+}
+
 TEST_F(MatrixTests, subtraction) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return Xs[0] - Xs[1];

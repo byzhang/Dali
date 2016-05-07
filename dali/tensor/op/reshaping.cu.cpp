@@ -3,6 +3,7 @@
 #include "dali/tensor/__MatMacros__.h"
 #include "dali/math/TensorOps.h"
 #include "dali/math/LazyTensor.h"
+#include "dali/math/lazy_patch2col.h"
 #include "dali/utils/assert2.h"
 
 #define DONT_COMPILE
@@ -305,6 +306,111 @@ namespace matops {
         }
         return out;
     }
+
+    mshadow::Shape<2> patch2col_no_grad_size(
+            const std::vector<int>& four_d_shape,
+            const int& kernel_height,
+            const int& kernel_width,
+            const int& kernel_stride) {
+        mshadow::index_t oheight  = (four_d_shape[2] - kernel_height)/kernel_stride + 1;
+        mshadow::index_t owidth   = (four_d_shape[3] - kernel_width)/kernel_stride + 1;
+        mshadow::index_t nbatch   = four_d_shape[0];
+        return mshadow::Shape2(
+            four_d_shape[1] * kernel_height * kernel_width,
+            nbatch * oheight * owidth
+        );
+    }
+
+    template<typename R>
+    Mat<R> Reshaping<R>::patch2col_no_grad(
+            Mat<R> matrix,
+            const std::vector<int>& four_d_shape,
+            const int& kernel_height,
+            const int& kernel_width,
+            const int& kernel_stride) {
+        ASSERT2(four_d_shape.size() == 4,
+            utils::MS() << "four_d_shape argument to patch2col must be a size "
+                        << "4 vector (got " << four_d_shape.size() << ")"
+        );
+        ASSERT2(four_d_shape[0] > 0 && four_d_shape[1] > 0 && four_d_shape[2] > 0 && four_d_shape[3] > 0,
+            "4d shape dimensions should be strictly positive");
+        int vol = (four_d_shape[0] * four_d_shape[1] * four_d_shape[2] * four_d_shape[3]);
+        ASSERT2(matrix.number_of_elements() == vol,
+            utils::MS() << "hypercube volume of 4d shape different (" << vol
+                        << ") from number of elements in matrix ("
+                        << matrix.number_of_elements() << ")."
+        );
+
+        int oheight  = (four_d_shape[2] - kernel_height) / kernel_stride + 1;
+        int owidth   = (four_d_shape[3] - kernel_width) / kernel_stride + 1;
+        int nbatch   = four_d_shape[0];
+        // we directly unpack all local patches and do a dot product
+        // this cost lots of memory, normally for large image, only unpack several image at a time
+        auto image_shape = mshadow::Shape4(
+            four_d_shape[0],
+            four_d_shape[1],
+            four_d_shape[2],
+            four_d_shape[3]
+        );
+        auto out_shape = patch2col_no_grad_size(
+            four_d_shape,
+            kernel_height,
+            kernel_width,
+            kernel_stride
+        );
+        Mat<R> out(
+            out_shape[0],
+            out_shape[1],
+            weights<R>::empty()
+        );
+        MAT(out) = unpack_patch2col(
+            MAT(matrix).reshape(image_shape).wrapper(),
+            kernel_height,
+            kernel_width,
+            kernel_stride
+        );
+        return out;
+    }
+
+    template<typename R>
+    Mat<R> Reshaping<R>::patch2col(
+            Mat<R> matrix,
+            const std::vector<int>& four_d_shape,
+            const int& kernel_height,
+            const int& kernel_width,
+            const int& kernel_stride) {
+
+        auto out = patch2col_no_grad(
+            matrix,
+            four_d_shape,
+            kernel_height,
+            kernel_width,
+            kernel_stride
+        );
+
+        if (graph::backprop_enabled() && !matrix.constant) {
+            graph::emplace_back([matrix, out, four_d_shape, kernel_width, kernel_height, kernel_stride]() {
+                auto image_shape = mshadow::Shape4(
+                    four_d_shape[0],
+                    four_d_shape[1],
+                    four_d_shape[2],
+                    four_d_shape[3]
+                );
+                GRAD(matrix).reshape(
+                    image_shape
+                ) = pack_col2patch(
+                    GRAD(out).wrapper(),
+                    image_shape,
+                    kernel_height,
+                    kernel_width,
+                    kernel_stride
+                );
+            });
+        }
+        return out;
+    }
+
+
     template class Reshaping<float>;
     template class Reshaping<double>;
     template class Reshaping<int>;
