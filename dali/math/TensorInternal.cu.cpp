@@ -2,6 +2,7 @@
 
 #include "dali/math/TensorOps.h"
 #include "dali/math/LazyTensor.h"
+#include "dali/math/tensor_arg_ops.h"
 #include "dali/utils/core_utils.h"
 
 using std::vector;
@@ -160,7 +161,7 @@ int TensorInternal<R, dimension>::argmin() const {
     // reduce colwise
     #ifdef DALI_USE_CUDA
     if (compute_me_on_gpu()) {
-        return TensorOps::arg::argmin( TensorOps::to_thrust(this->gpu_data()), this->number_of_elements() )[0];
+        return TensorOps::arg::argmin(TensorOps::to_thrust(this->gpu_data()), this->number_of_elements())[0];
     }
     #endif
 
