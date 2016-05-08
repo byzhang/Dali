@@ -25,6 +25,16 @@ namespace matops {
             const int& kernel_height,
             const int& kernel_width,
             const int& kernel_stride) {
+        ASSERT2(image_shape.size() == 4,
+            utils::MS() << "image_shape argument to patch2col must be a size "
+                        << "4 vector (got " << image_shape.size() << ")"
+        );
+        ASSERT2(kernels.dims(1) == kernel_height * kernel_width * image_shape[1],
+            utils::MS() << "kernels shape must be of dimension num_filters * filter_size, "
+                        << "but inferred filter_size to be kernel_height * kernel_width * "
+                        << "image_shape[1] = " << (kernel_height * kernel_width * image_shape[1])
+                        << ", while kernels has second dimension = " << kernels.dims(1)
+        );
 
         auto patched_image = Reshaping<R>::patch2col_no_grad(
             image,
