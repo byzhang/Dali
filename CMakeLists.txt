@@ -63,6 +63,20 @@ find_package(GooglePerfTools)
 find_package(MKL)
 find_package(GTest)
 find_package(CUDA)
+# (Note: in certain cases BLAS is found
+# by detecting Atlas, so we find this package
+# separately again to obtain its dependencies)
+find_package(Atlas)
+ 
+IF (OpenBLAS_FOUND)
+  message(STATUS "openblas found")
+ENDIF (OpenBLAS_FOUND)
+
+IF (ATLAS_FOUND)
+  message(STATUS "Atlas found")
+  # add specific Atlas libraries to dependencies
+  LIST(APPEND BLAS_LIBRARIES ${Atlas_LIBRARIES})
+ENDIF(ATLAS_FOUND)
 
 if (NOT GPERFTOOLS_FOUND)
     message(WARNING "consider installing gperftools for better multithreaded performance.\n    > brew install gperftools")
