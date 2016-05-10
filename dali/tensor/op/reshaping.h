@@ -50,8 +50,11 @@ namespace matops {
             const int& kernel_height,
             const int& kernel_stride);
 
-        template<int operation_ndim, int axis1, int axis2>
-        static Mat<R> swapaxes(Mat<R> mat, const std::vector<int>& reshape);
+        static Mat<R> swapaxes(
+            Mat<R> matrixx,
+            const std::vector<int>& reshape,
+            const int& axis1,
+            const int& axis2);
     };
 }
 

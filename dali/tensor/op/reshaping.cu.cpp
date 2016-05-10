@@ -430,13 +430,12 @@ namespace matops {
         return shape;
     }
 
-    template<typename R>
-    template<int operation_ndim, int axis1, int axis2>
-    Mat<R> Reshaping<R>::swapaxes(Mat<R> mat, const std::vector<int>& reshape) {
+    template<int operation_ndim, int axis1, int axis2, typename R>
+    Mat<R> swapaxes_impl(Mat<R> mat, const std::vector<int>& reshape) {
         static_assert(axis1 >= 0 && axis1 < operation_ndim, "axis1 is outside of operation_ndim");
         static_assert(axis2 >= 0 && axis2 < operation_ndim, "axis2 is outside of operation_ndim");
         static_assert(axis1 > axis2, "axis1 must be greater than axis2");
-        static_assert(axis2 != axis1, "axis1 cannot equal to axis2 (this is a no-op)");
+        static_assert(axis2 != axis1, "axis1 cannot equal axis2 (this is a no-op)");
         // first assert that there is as much data in reshape as
         // in mat.
         int vol = 1;
@@ -479,26 +478,40 @@ namespace matops {
         return out;
     }
 
+    template<typename R>
+    Mat<R> Reshaping<R>::swapaxes(Mat<R> mat, const std::vector<int>& reshape, const int& axis1, const int& axis2) {
+        if (axis2 > axis1) {
+            return swapaxes(mat, reshape, axis2, axis1);
+        }
+
+        #define SWAPAXES_NDIM_A1_A2(ndim, A1, A2)\
+            if (axis1 == A1 && axis2 == A2) {\
+                return swapaxes_impl<ndim, A1, A2>(mat, reshape);\
+            }\
+
+        switch (reshape.size()) {
+            case 2:
+                SWAPAXES_NDIM_A1_A2(2, 1, 0)
+                ASSERT2(false, utils::MS() << "axis out of bounds for swapaxes: " << axis1 << "-" << axis2 << ".");
+            case 3:
+                SWAPAXES_NDIM_A1_A2(3, 1, 0)
+                SWAPAXES_NDIM_A1_A2(3, 2, 0)
+                SWAPAXES_NDIM_A1_A2(3, 2, 1)
+                ASSERT2(false, utils::MS() << "axis out of bounds for swapaxes: " << axis1 << "-" << axis2 << ".");
+            case 4:
+                SWAPAXES_NDIM_A1_A2(4, 1, 0)
+                SWAPAXES_NDIM_A1_A2(4, 2, 0)
+                SWAPAXES_NDIM_A1_A2(4, 2, 1)
+                SWAPAXES_NDIM_A1_A2(4, 3, 1)
+                SWAPAXES_NDIM_A1_A2(4, 3, 2)
+                ASSERT2(false, utils::MS() << "axis out of bounds for swapaxes: " << axis1 << "-" << axis2 << ".");
+            default:
+                ASSERT2(false, utils::MS() << "swapaxes shape dimensionality must be between 2 and 4 (got " << reshape.size() << ").");
+        }
+    }
+
     template class Reshaping<float>;
     template class Reshaping<double>;
     template class Reshaping<int>;
-
-    #define INSTANTIATE_FUNC_NDIM(ndim, axis1, axis2)\
-        template Mat<float> Reshaping<float>::template swapaxes<ndim, axis1, axis2>(Mat<float>, const std::vector<int>&);\
-        template Mat<double> Reshaping<double>::template swapaxes<ndim, axis1, axis2>(Mat<double>, const std::vector<int>&);\
-        template Mat<int> Reshaping<int>::template swapaxes<ndim, axis1, axis2>(Mat<int>, const std::vector<int>&);\
-
-    INSTANTIATE_FUNC_NDIM(2, 1, 0)
-
-    INSTANTIATE_FUNC_NDIM(3, 1, 0)
-    INSTANTIATE_FUNC_NDIM(3, 2, 0)
-    INSTANTIATE_FUNC_NDIM(3, 2, 1)
-
-    INSTANTIATE_FUNC_NDIM(4, 1, 0)
-    INSTANTIATE_FUNC_NDIM(4, 2, 0)
-    INSTANTIATE_FUNC_NDIM(4, 3, 0)
-    INSTANTIATE_FUNC_NDIM(4, 2, 1)
-    INSTANTIATE_FUNC_NDIM(4, 3, 1)
-    INSTANTIATE_FUNC_NDIM(4, 3, 2)
 
 }
