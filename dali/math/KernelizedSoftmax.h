@@ -1,12 +1,8 @@
 #ifndef DALI_MATH_THRUST_SOFTMAX_TRANSPOSE_H
 #define DALI_MATH_THRUST_SOFTMAX_TRANSPOSE_H
-#include "dali/math/TensorOps.h"
-#include "dali/math/memory_bank/MemoryBank.h"
 #include "dali/config.h"
+#include <mshadow/tensor.h>
 
-#ifdef DALI_USE_CUDA
-#include <thrust/system/cuda/execution_policy.h>
-#endif
 /**
 Thrust Softmax
 --------------
@@ -234,8 +230,8 @@ namespace TensorOps {
     #endif
 
     template<typename R>
-    inline void softmax_rowwise(mshadow::Tensor<cpu, 1, R> dst,
-                        const mshadow::Tensor<cpu, 1, R> &src,
+    inline void softmax_rowwise(mshadow::Tensor<mshadow::cpu, 1, R> dst,
+                        const mshadow::Tensor<mshadow::cpu, 1, R> &src,
                         R& temperature) {
         R mmax = src[0];
         for (mshadow::index_t x = 1; x < dst.size(0); ++x) {
@@ -252,8 +248,8 @@ namespace TensorOps {
     }
 
     template<typename R>
-    inline void softmax_rowwise(mshadow::Tensor<cpu, 2, R> dst,
-                          const mshadow::Tensor<cpu, 2, R> &src,
+    inline void softmax_rowwise(mshadow::Tensor<mshadow::cpu, 2, R> dst,
+                          const mshadow::Tensor<mshadow::cpu, 2, R> &src,
                           R temperature) {
         mshadow::utils::Check(dst.shape_ == src.shape_, "SoftmaxTranspose: shape mismatch");
         for (mshadow::index_t y = 0; y < dst.size(0); ++y) {
@@ -262,7 +258,7 @@ namespace TensorOps {
     }
 
     template<typename R>
-    void softmax_colwise(mshadow::Tensor<cpu,2,R> dst, mshadow::Tensor<cpu,2,R> src, R temperature = 1.0) {
+    void softmax_colwise(mshadow::Tensor<mshadow::cpu,2,R> dst, mshadow::Tensor<mshadow::cpu,2,R> src, R temperature = 1.0) {
         for (mshadow::index_t col = 0; col < dst.size(1); ++col) {
             R mmax = src[0][col];
             for (mshadow::index_t row = 1; row < dst.size(0); ++row) {

@@ -4,6 +4,7 @@
 #include "dali/math/TensorOps.h"
 #include "dali/math/LazyTensor.h"
 #include "dali/math/lazy_patch2col.h"
+#include "dali/math/lazy_swapaxis.h"
 #include "dali/utils/assert2.h"
 
 #define DONT_COMPILE
@@ -420,9 +421,84 @@ namespace matops {
         return out;
     }
 
+    template<int ndim>
+    mshadow::Shape<ndim> vector2shape(const std::vector<int>& vshape) {
+        mshadow::Shape<ndim> shape;
+        for (int i = 0; i < vshape.size(); i++) {
+            shape[i] = vshape[i];
+        }
+        return shape;
+    }
+
+    template<typename R>
+    template<int operation_ndim, int axis1, int axis2>
+    Mat<R> Reshaping<R>::swapaxes(Mat<R> mat, const std::vector<int>& reshape) {
+        static_assert(axis1 >= 0 && axis1 < operation_ndim, "axis1 is outside of operation_ndim");
+        static_assert(axis2 >= 0 && axis2 < operation_ndim, "axis2 is outside of operation_ndim");
+        static_assert(axis1 > axis2, "axis1 must be greater than axis2");
+        static_assert(axis2 != axis1, "axis1 cannot equal to axis2 (this is a no-op)");
+        // first assert that there is as much data in reshape as
+        // in mat.
+        int vol = 1;
+        ASSERT2(reshape.size() == operation_ndim,
+                utils::MS() << "Need a temporary shape of size " << operation_ndim
+                            << " but got " << reshape.size() << " instead"
+        );
+        for (const auto& val : reshape) {
+            ASSERT2(
+                val > 0,
+                utils::MS() << "all dimensions of reshape size must be strictly positive (got "
+                            << reshape << ")"
+            );
+            vol *= val;
+        }
+        ASSERT2(vol == mat.number_of_elements(),
+            utils::MS() << "swapaxes shape must have as many elements as original matrix (got "
+                        << vol << " but should be " << mat.number_of_elements() << ")"
+        );
+
+        auto outcome_shape = reshape;
+        std::swap(outcome_shape[axis1], outcome_shape[axis2]);
+
+        // output has dimensions of Prod(dim) x dim[-1]
+        Mat<R> out(
+            vol / outcome_shape.back(),
+            outcome_shape.back(), weights<R>::empty()
+        );
+
+        out.w().reshape(vector2shape<operation_ndim>(outcome_shape)) = swapaxis<axis1, axis2>(
+            mat.w().reshape(vector2shape<operation_ndim>(reshape)).wrapper()
+        );
+
+        if (graph::backprop_enabled() && !mat.constant)
+            graph::emplace_back([outcome_shape, reshape, mat, out]() {
+                mat.dw().reshape(vector2shape<operation_ndim>(reshape)) += swapaxis<axis1, axis2>(
+                    out.dw().reshape(vector2shape<operation_ndim>(outcome_shape)).wrapper()
+                );
+            });
+        return out;
+    }
 
     template class Reshaping<float>;
     template class Reshaping<double>;
     template class Reshaping<int>;
+
+    #define INSTANTIATE_FUNC_NDIM(ndim, axis1, axis2)\
+        template Mat<float> Reshaping<float>::template swapaxes<ndim, axis1, axis2>(Mat<float>, const std::vector<int>&);\
+        template Mat<double> Reshaping<double>::template swapaxes<ndim, axis1, axis2>(Mat<double>, const std::vector<int>&);\
+        template Mat<int> Reshaping<int>::template swapaxes<ndim, axis1, axis2>(Mat<int>, const std::vector<int>&);\
+
+    INSTANTIATE_FUNC_NDIM(2, 1, 0)
+
+    INSTANTIATE_FUNC_NDIM(3, 1, 0)
+    INSTANTIATE_FUNC_NDIM(3, 2, 0)
+    INSTANTIATE_FUNC_NDIM(3, 2, 1)
+
+    INSTANTIATE_FUNC_NDIM(4, 1, 0)
+    INSTANTIATE_FUNC_NDIM(4, 2, 0)
+    INSTANTIATE_FUNC_NDIM(4, 3, 0)
+    INSTANTIATE_FUNC_NDIM(4, 2, 1)
+    INSTANTIATE_FUNC_NDIM(4, 3, 1)
+    INSTANTIATE_FUNC_NDIM(4, 3, 2)
 
 }
