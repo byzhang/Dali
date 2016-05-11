@@ -7,7 +7,7 @@
 // throw assertion errors with messages
 namespace utils {
     void assert2(bool condition);
-    void assert2(bool condition, std::string message);
+    void assert2(bool condition, const std::string& message);
 }
 #define ASSERT2(condition, message) if (!(condition)) utils::assert2(false, (message))
 
