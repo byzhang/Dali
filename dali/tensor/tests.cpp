@@ -871,7 +871,7 @@ TEST_F(MatrixTests, margin_loss_colwise) {
     // we can now extend the range of our random numbers to be beyond
     // 0 and 1 since sigmoid will clamp them to 0 or 1.
     EXPERIMENT_REPEAT {
-        auto A = Mat<R>(4, 3, weights<R>::uniform(5.0));
+        auto A = Mat<R>(10, 20, weights<R>::uniform(5.0));
         R margin = utils::randdouble(0.01, 0.1);
         uint target = utils::randinteger<uint>(0, A.dims(0) - 1);
         auto functor = [target, margin](vector<Mat<R>> Xs)-> Mat<R> {
