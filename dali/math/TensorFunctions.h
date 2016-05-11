@@ -211,6 +211,20 @@ namespace TensorOps {
         };
 
         template<typename R>
+        struct minimum_backward {
+            MSHADOW_XINLINE static R Map(const R& redres, const R& redsrc) {
+                return redres == redsrc ? 1: 0;
+            }
+        };
+        // identical to minimum backward
+        template<typename R>
+        struct maximum_backward {
+            MSHADOW_XINLINE static R Map(const R& redres, const R& redsrc) {
+                return redres == redsrc ? 1: 0;
+            }
+        };
+
+        template<typename R>
         struct clip {
             MSHADOW_XINLINE static R Map(const R& x, const R& clipping_val) {
                 if (x > clipping_val) {

@@ -644,6 +644,26 @@ BINARY_SCALAR_OP(mshadow::op::div,  /);
     auto sum_cols(const LazyTensor<TA, TB, DType, 2, ta> &exp) -> decltype(reduce_to_1d<0, mshadow::red::sum>(exp)) {
         return reduce_to_1d<0, mshadow::red::sum>(exp);
     }
+
+    template<typename TA, typename TB, typename DType, int ta>
+    auto max_rows(const LazyTensor<TA, TB, DType, 2, ta> &exp) -> decltype(reduce_to_1d<0, mshadow::red::maximum>(exp)) {
+        return reduce_to_1d<1, mshadow::red::maximum>(exp);
+    }
+
+    template<typename TA, typename TB, typename DType, int ta>
+    auto max_cols(const LazyTensor<TA, TB, DType, 2, ta> &exp) -> decltype(reduce_to_1d<0, mshadow::red::maximum>(exp)) {
+        return reduce_to_1d<0, mshadow::red::maximum>(exp);
+    }
+
+    template<typename TA, typename TB, typename DType, int ta>
+    auto min_rows(const LazyTensor<TA, TB, DType, 2, ta> &exp) -> decltype(reduce_to_1d<0, mshadow::red::minimum>(exp)) {
+        return reduce_to_1d<1, mshadow::red::minimum>(exp);
+    }
+
+    template<typename TA, typename TB, typename DType, int ta>
+    auto min_cols(const LazyTensor<TA, TB, DType, 2, ta> &exp) -> decltype(reduce_to_1d<0, mshadow::red::minimum>(exp)) {
+        return reduce_to_1d<0, mshadow::red::minimum>(exp);
+    }
 #else
     template<int dimkeep, typename reduction, typename TA, typename DType, int dimension, int ta>
     auto reduce_to_1d(const LazyTensor<TA, DType, dimension, ta> &exp) ->
@@ -669,6 +689,26 @@ BINARY_SCALAR_OP(mshadow::op::div,  /);
     template<typename TA, typename DType, int ta>
     auto sum_cols(const LazyTensor<TA, DType, 2, ta> &exp) -> decltype(reduce_to_1d<0, mshadow::red::sum>(exp)) {
         return reduce_to_1d<0, mshadow::red::sum>(exp);
+    }
+
+    template<typename TA, typename DType, int ta>
+    auto max_rows(const LazyTensor<TA, DType, 2, ta> &exp) -> decltype(reduce_to_1d<0, mshadow::red::maximum>(exp)) {
+        return reduce_to_1d<1, mshadow::red::maximum>(exp);
+    }
+
+    template<typename TA, typename DType, int ta>
+    auto max_cols(const LazyTensor<TA, DType, 2, ta> &exp) -> decltype(reduce_to_1d<0, mshadow::red::maximum>(exp)) {
+        return reduce_to_1d<0, mshadow::red::maximum>(exp);
+    }
+
+    template<typename TA, typename DType, int ta>
+    auto min_rows(const LazyTensor<TA, DType, 2, ta> &exp) -> decltype(reduce_to_1d<0, mshadow::red::minimum>(exp)) {
+        return reduce_to_1d<1, mshadow::red::minimum>(exp);
+    }
+
+    template<typename TA, typename DType, int ta>
+    auto min_cols(const LazyTensor<TA, DType, 2, ta> &exp) -> decltype(reduce_to_1d<0, mshadow::red::minimum>(exp)) {
+        return reduce_to_1d<0, mshadow::red::minimum>(exp);
     }
 #endif
 

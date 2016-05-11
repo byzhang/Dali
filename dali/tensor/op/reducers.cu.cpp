@@ -186,22 +186,41 @@ namespace matops {
     Mat<R> Reducers<R>::max_rowwise(Mat<R> matrix) {
         if (matrix.dims(1) == 1)
             return matrix;
-        Mat<int> argmax_mat(1, matrix.dims(0), weights<int>::empty());
-        auto argmax_idx = matrix.argmax(1);
-        for (size_t idx = 0; idx < argmax_idx.size(); idx++) {
-            argmax_mat.w(idx) = argmax_idx[idx] + idx * matrix.dims(1);
-        }
-        return matrix.ravel()[argmax_mat];
+        Mat<R> out(matrix.dims(0), 1, weights<R>::empty());
+        MAT(out).ravel() = reduce_to_1d<0, mshadow::red::maximum>(MAT(matrix).wrapper());
+
+        if (graph::backprop_enabled() && !matrix.constant)
+            graph::emplace_back([matrix, out]() mutable {
+                GRAD(matrix) += (
+                    GRAD(out).ravel().wrapper().template broadcast<0>(GRAD(matrix).shape) *
+                    F<TensorOps::op::maximum_backward<R>>(
+                        MAT(matrix).wrapper(),
+                        MAT(out).ravel().wrapper().template broadcast<0>(GRAD(matrix).shape)
+                    )
+                );
+            });
+        return out;
     }
 
     template<typename R>
     Mat<R> Reducers<R>::max_colwise(Mat<R> matrix) {
         if (matrix.dims(0) == 1)
             return matrix;
-        auto matrixT = matrix.T();
-        return max_rowwise(matrixT).T();
-    }
+        Mat<R> out(1, matrix.dims(1), weights<R>::empty());
+        MAT(out).ravel() = reduce_to_1d<1, mshadow::red::maximum>(MAT(matrix).wrapper());
 
+        if (graph::backprop_enabled() && !matrix.constant)
+            graph::emplace_back([matrix, out]() mutable {
+                GRAD(matrix) += (
+                    GRAD(out).ravel().wrapper().template broadcast<1>(GRAD(matrix).shape) *
+                    F<TensorOps::op::maximum_backward<R>>(
+                        MAT(matrix).wrapper(),
+                        MAT(out).ravel().wrapper().template broadcast<1>(GRAD(matrix).shape)
+                    )
+                );
+            });
+        return out;
+    }
 
     template<typename R>
     Mat<R> Reducers<R>::min(Mat<R> matrix) {
@@ -213,20 +232,40 @@ namespace matops {
     Mat<R> Reducers<R>::min_rowwise(Mat<R> matrix) {
         if (matrix.dims(1) == 1)
             return matrix;
-        Mat<int> argmin_mat(1, matrix.dims(0));
-        auto argmin_idx = matrix.argmin(1);
-        for (size_t idx = 0; idx < argmin_idx.size(); idx++) {
-            argmin_mat.w(idx) = argmin_idx[idx] + idx * matrix.dims(1);
-        }
-        return matrix.ravel()[argmin_mat];
+        Mat<R> out(matrix.dims(0), 1, weights<R>::empty());
+        MAT(out).ravel() = reduce_to_1d<0, mshadow::red::minimum>(MAT(matrix).wrapper());
+
+        if (graph::backprop_enabled() && !matrix.constant)
+            graph::emplace_back([matrix, out]() mutable {
+                GRAD(matrix) += (
+                    GRAD(out).ravel().wrapper().template broadcast<0>(GRAD(matrix).shape) *
+                    F<TensorOps::op::minimum_backward<R>>(
+                        MAT(matrix).wrapper(),
+                        MAT(out).ravel().wrapper().template broadcast<0>(GRAD(matrix).shape)
+                    )
+                );
+            });
+        return out;
     }
 
     template<typename R>
     Mat<R> Reducers<R>::min_colwise(Mat<R> matrix) {
         if (matrix.dims(0) == 1)
             return matrix;
-        auto matrixT = matrix.T();
-        return min_rowwise(matrixT).T();
+        Mat<R> out(1, matrix.dims(1), weights<R>::empty());
+        MAT(out).ravel() = reduce_to_1d<1, mshadow::red::minimum>(MAT(matrix).wrapper());
+
+        if (graph::backprop_enabled() && !matrix.constant)
+            graph::emplace_back([matrix, out]() mutable {
+                GRAD(matrix) += (
+                    GRAD(out).ravel().wrapper().template broadcast<1>(GRAD(matrix).shape) *
+                    F<TensorOps::op::minimum_backward<R>>(
+                        MAT(matrix).wrapper(),
+                        MAT(out).ravel().wrapper().template broadcast<1>(GRAD(matrix).shape)
+                    )
+                );
+            });
+        return out;
     }
 
 
