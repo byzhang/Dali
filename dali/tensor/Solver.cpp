@@ -337,8 +337,8 @@ namespace Solver {
             if (nan_protection && param.is_grad_nan()) {
                 std::cout << "WARNING: Ignoring gradient update because of NaNs." << std::endl;
             } else {
-                auto& gsum = gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
-                auto& xsum = xsums[PARAM_KEY_FOR_LOOKUP_TABLE];
+                auto& gsum = gsums.at(PARAM_KEY_FOR_LOOKUP_TABLE);
+                auto& xsum = xsums.at(PARAM_KEY_FOR_LOOKUP_TABLE);
 
                 MatOps<R>::clip_and_regularize(param, this->clipval, this->regc);
                 MatOps<R>::adadelta_update(param, gsum, xsum, rho, this->smooth_eps);
@@ -403,8 +403,8 @@ namespace Solver {
             if (nan_protection && param.is_grad_nan()) {
                 std::cout << "WARNING: Ignoring gradient update because of NaNs." << std::endl;
             } else {
-                auto& m = gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
-                auto& v = xsums[PARAM_KEY_FOR_LOOKUP_TABLE];
+                auto& m = gsums.at(PARAM_KEY_FOR_LOOKUP_TABLE);
+                auto& v = xsums.at(PARAM_KEY_FOR_LOOKUP_TABLE);
 
                 MatOps<R>::clip_and_regularize(param, this->clipval, this->regc);
 
