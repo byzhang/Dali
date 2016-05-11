@@ -68,14 +68,6 @@ class LazyTensor : public DormantTensor<DType> {
             RightType right;
         #endif
 
-        auto shape() -> decltype(mshadow::expr::ShapeCheck<kDim, LeftType>::Check(
-                            left
-                        )) {
-            return mshadow::expr::ShapeCheck<kDim, LeftType>::Check(
-                left
-            );
-        }
-
         #ifdef DALI_USE_CUDA
             LazyTensor(
                 const LeftType& _left,
@@ -250,6 +242,14 @@ class LazyTensor : public DormantTensor<DType> {
         #endif
 };
 
+template<typename LazyType>
+auto shape(const LazyType& expr) -> decltype(mshadow::expr::ShapeCheck<LazyType::kDim, typename LazyType::left_t>::Check(
+                    expr.left
+                )) {
+    return mshadow::expr::ShapeCheck<LazyType::kDim, typename LazyType::left_t>::Check(
+        expr.left
+    );
+};
 
 #ifdef DALI_USE_CUDA
     #define BINARY_OP(opname, opsymbol) \
