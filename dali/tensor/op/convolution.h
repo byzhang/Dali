@@ -18,11 +18,6 @@ namespace matops {
             const int& kernel_width,
             const int& kernel_stride);
 
-        static Mat<R> conv1d(Mat<R> image, Mat<R> kernel);
-        static Mat<R> conv1d(Mat<R> image, Mat<R> kernel, bool pad);
-        static Mat<R> conv1d(Mat<R> image, const std::vector<Mat<R>>& kernels);
-        static Mat<R> conv1d(Mat<R> image, const std::vector<Mat<R>>& kernels, bool pad);
-
         // As described in the "Neural Turing Machine" paper.
         static Mat<R> circular_convolution(Mat<R> input, Mat<R> shift);
     };

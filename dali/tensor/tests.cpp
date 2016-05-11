@@ -491,14 +491,14 @@ TEST_F(MatrixTests, patch2col) {
 TEST_F(MatrixTests, patch2col_conv2d) {
     int nbatch = 2;
     int feats = 3;
-    int width = 10;
+    int width = 5;
     int height = 4;
 
     int kwidth = 3;
     int kheight = 2;
-    int kstride = 2;
+    int kstride = 4;
 
-    int num_kernels = 2;
+    int num_kernels = 1;
 
     auto functor = [&](vector<Mat<R>> Xs)-> Mat<R> {
         auto out = MatOps<R>::conv2d(
@@ -514,6 +514,46 @@ TEST_F(MatrixTests, patch2col_conv2d) {
     EXPERIMENT_REPEAT {
         Mat<R> image(nbatch, feats * width * height, weights<R>::uniform(2.0));
         Mat<R> kernels(num_kernels, feats * kwidth * kheight, weights<R>::uniform(2.0));
+        ASSERT_TRUE(gradient_same(functor, {image, kernels}));
+    }
+}
+
+TEST_F(MatrixTests, conv2d_1d_shape) {
+    // image config
+    int xwidth = 3;
+    int xheight = 1;
+    int channels = 2;
+    int nbatch = 5;
+
+    // filter config
+    int nfilters = 4;
+    int kwidth = 3;
+    int kheight = 1;
+    int kstride = 1;
+
+    EXPERIMENT_REPEAT {
+        Mat<R> image(
+            nbatch,
+            channels * xheight * xwidth,
+            weights<R>::uniform(-2.0, 2.0)
+        );
+
+        Mat<R> kernels(
+            nfilters,
+            channels * kheight * kwidth,
+            weights<R>::uniform(-2.0, 2.0)
+        );
+
+        auto functor = [=](vector<Mat<R>> Xs) -> Mat<R> {
+            return MatOps<R>::conv2d(
+                image, kernels,
+                {nbatch, channels, xheight, xwidth},
+                kheight,
+                kwidth,
+                kstride
+            );
+        };
+
         ASSERT_TRUE(gradient_same(functor, {image, kernels}));
     }
 }
@@ -831,7 +871,7 @@ TEST_F(MatrixTests, margin_loss_colwise) {
     // we can now extend the range of our random numbers to be beyond
     // 0 and 1 since sigmoid will clamp them to 0 or 1.
     EXPERIMENT_REPEAT {
-        auto A = Mat<R>(10, 20, weights<R>::uniform(5.0));
+        auto A = Mat<R>(4, 3, weights<R>::uniform(5.0));
         R margin = utils::randdouble(0.01, 0.1);
         uint target = utils::randinteger<uint>(0, A.dims(0) - 1);
         auto functor = [target, margin](vector<Mat<R>> Xs)-> Mat<R> {
@@ -848,7 +888,7 @@ TEST_F(MatrixTests, margin_loss_rowwise) {
     // we can now extend the range of our random numbers to be beyond
     // 0 and 1 since sigmoid will clamp them to 0 or 1.
     EXPERIMENT_REPEAT {
-        auto A = Mat<R>(10, 20, weights<R>::uniform(5.0));
+        auto A = Mat<R>(4, 3, weights<R>::uniform(5.0));
         R margin = utils::randdouble(0.01, 0.1);
         uint target = utils::randinteger<uint>(0, A.dims(1) - 1);
         auto functor = [target, margin](vector<Mat<R>> Xs)-> Mat<R> {
@@ -1091,10 +1131,10 @@ TEST_F(MatOpsTests, matrix_mul_add_mul_with_bias_fancy_broadcast) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return MatOps<R>::mul_add_mul_with_bias({Xs[0], Xs[2], Xs[4]}, {Xs[1], Xs[3], Xs[5]}, Xs[6]);
     };
-    int num_examples = 20;
-    int hidden_size = 10;
+    int num_examples = 2;
+    int hidden_size = 3;
     int input_size = 5;
-    int other_input_size = 7;
+    int other_input_size = 1;
     EXPERIMENT_REPEAT {
         auto X       = Mat<R>(num_examples, input_size,       weights<R>::uniform(20.0));
         auto W       = Mat<R>(input_size,   hidden_size,      weights<R>::uniform(2.0));
@@ -1115,10 +1155,10 @@ TEST_F(MatOpsTests, matrix_mul_add_mul_with_bias_colwise) {
     auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
         return MatOps<R>::mul_add_mul_with_bias_colwise({Xs[0], Xs[2], Xs[4]}, {Xs[1], Xs[3], Xs[5]}, Xs[6]);
     };
-    int num_examples = 20;
-    int hidden_size = 10;
+    int num_examples = 2;
+    int hidden_size = 3;
     int input_size = 5;
-    int other_input_size = 7;
+    int other_input_size = 1;
     EXPERIMENT_REPEAT {
         auto W       = Mat<R>(hidden_size,  input_size,         weights<R>::uniform(2.0));
         auto X       = Mat<R>(input_size,   num_examples,       weights<R>::uniform(20.0));
@@ -1514,19 +1554,6 @@ TEST_F(MatOpsTests, circular_convolution) {
         auto matrix = Mat<R>(4, 5, weights<R>::uniform(-20.0, 20.0));
         auto shift  = Mat<R>(4, 5, weights<R>::uniform(-20.0, 20.0));
         ASSERT_TRUE(gradient_same(functor, {matrix, shift}, 1e-4));
-    }
-}
-
-
-TEST_F(MatOpsTests, DISABLED_matrix_conv1d_grad) {
-    auto functor = [](vector<Mat<R>> Xs)-> Mat<R> {
-        return MatOps<R>::conv1d(Xs[0], std::initializer_list<Mat<R>>({Xs[1], Xs[2]})).tanh();
-    };
-    EXPERIMENT_REPEAT {
-        auto kernel1 = Mat<R>(5, 5, weights<R>::uniform(-20.0, 20.0));
-        auto kernel2 = Mat<R>(5, 5, weights<R>::uniform(-20.0, 20.0));
-        auto image = Mat<R>(5, 20, weights<R>::uniform(-20.0, 20.0));
-        ASSERT_TRUE(gradient_same(functor, {image, kernel1, kernel2}, 1e-2));
     }
 }
 
