@@ -357,23 +357,25 @@ namespace Solver {
     /* Adam */
     template<typename R>
     Adam<R>::Adam (
+            R _step_size,
             R _b1,
             R _b2,
             R smooth_eps,
             R clipval,
             R regc) : AbstractSolver<R>(clipval, smooth_eps, regc, METHOD_ADAM),
-                      b1(_b1), b2(_b2), epoch(0) {
+                      step_size(_step_size), b1(_b1), b2(_b2), epoch(0) {
     }
 
     template<typename R>
     Adam<R>::Adam (
             vector<Mat<R>>& parameters,
+            R _step_size,
             R _b1,
             R _b2,
             R smooth_eps,
             R clipval,
             R regc) : AbstractSolver<R>(clipval, smooth_eps, regc, METHOD_ADAM),
-                      b1(_b1), b2(_b2), epoch(0) {
+                      step_size(_step_size), b1(_b1), b2(_b2), epoch(0) {
         create_gradient_caches(parameters);
     }
 
@@ -417,33 +419,33 @@ namespace Solver {
 
     template<typename R>
     void Adam<R>::step (vector<Mat<R>>& parameters) {
-        return step(parameters, 0.0002);
+        return step(parameters, step_size);
     }
 
     template<typename R>
     std::shared_ptr<AbstractSolver<R>> construct(
             std::string solver_name,
             std::vector<Mat<R>>& params,
-            R learning_rate,
+            R step_size,
             R regc) {
         std::shared_ptr<AbstractSolver<R>> solver;
         std::transform(solver_name.begin(), solver_name.end(), solver_name.begin(), ::tolower);
         if (solver_name        == "adadelta") {
             solver = std::make_shared<AdaDelta<R>>(params, 0.95, 1e-4, 100.0, regc);
         } else if (solver_name == "adam") {
-            solver = std::make_shared<Adam<R>>(params, 0.55, 1e-6, 1e-9, 100.0, regc);
+            solver = std::make_shared<Adam<R>>(params, step_size, 0.55, 1e-6, 1e-9, 100.0, regc);
         } else if (solver_name == "sgd") {
             solver = std::make_shared<SGD<R>>(params, 100.0, regc);
-            dynamic_cast<SGD<R>*>(solver.get())->step_size = learning_rate;
+            dynamic_cast<SGD<R>*>(solver.get())->step_size = step_size;
         } else if (solver_name == "adagrad") {
             solver = std::make_shared<AdaGrad<R>>(params, 1e-9, 100.0, regc);
-            dynamic_cast<Solver::AdaGrad<R>*>(solver.get())->step_size = learning_rate;
+            dynamic_cast<Solver::AdaGrad<R>*>(solver.get())->step_size = step_size;
         } else if (solver_name == "rmsprop") {
             solver = std::make_shared<RMSProp<R>>(params, 0.999, 1e-9, 100.0, regc);
-            dynamic_cast<Solver::RMSProp<R>*>(solver.get())->step_size = learning_rate;
+            dynamic_cast<Solver::RMSProp<R>*>(solver.get())->step_size = step_size;
         } else if (solver_name == "rmspropmomentum") {
             solver = std::make_shared<RMSPropMomentum<R>>(params);
-            dynamic_cast<Solver::RMSPropMomentum<R>*>(solver.get())->step_size = learning_rate;
+            dynamic_cast<Solver::RMSPropMomentum<R>*>(solver.get())->step_size = step_size;
             dynamic_cast<Solver::RMSPropMomentum<R>*>(solver.get())->regc = regc;
         } else {
             utils::exit_with_message("Did not recognize this solver type.");

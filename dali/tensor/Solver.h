@@ -110,12 +110,13 @@ namespace Solver {
         public:
             R b1;
             R b2;
+            R step_size;
             // This is a large integer:
             unsigned long long epoch;
             std::unordered_map<cache_key_t<R>, cache_t<R>> xsums;
             std::unordered_map<cache_key_t<R>, cache_t<R>> gsums;
-            Adam (R b1 = 0.5, R b2 = 1e-6, R smooth_eps = SMOOTH_DEFAULT, R clipval = 100.0, R regc = 0.0);
-            Adam (std::vector<Mat<R>>&, R b1 = 0.5, R b2 = 1e-6, R smooth_eps = SMOOTH_DEFAULT, R clipval = 100.0, R regc = 0.0);
+            Adam (R step_size = 0.0002, R b1 = 0.5, R b2 = 1e-6, R smooth_eps = SMOOTH_DEFAULT, R clipval = 100.0, R regc = 0.0);
+            Adam (std::vector<Mat<R>>&, R step_size = 0.0002, R b1 = 0.5, R b2 = 1e-6, R smooth_eps = SMOOTH_DEFAULT, R clipval = 100.0, R regc = 0.0);
             virtual void step(std::vector<Mat<R>>&);
             virtual void step(std::vector<Mat<R>>&, R step_size);
             virtual void create_gradient_caches(std::vector<Mat<R>>&);
@@ -125,7 +126,7 @@ namespace Solver {
     template<typename R>
     std::shared_ptr<AbstractSolver<R>> construct(std::string solver_name,
                                                  std::vector<Mat<R>>& params,
-                                                 R learning_rate = 0.01,
+                                                 R step_size = 0.01,
                                                  R regc = 0.0);
 
 }
