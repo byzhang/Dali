@@ -49,7 +49,10 @@ std::vector<const SynchronizedMemory<DType>*> extract_memory(const dependent_ten
     template<typename LeftType, typename DType, int dimension, int ktype>
 #endif
 class LazyTensor : public DormantTensor<DType> {
+
     public:
+        static const int kDim = mshadow::expr::ExpInfo<LeftType>::kDim;
+
         typedef mshadow::Tensor<mshadow::cpu, dimension, DType> cpu_tensor_t;
 
         // store list of dependant tensors whose memory
@@ -64,6 +67,14 @@ class LazyTensor : public DormantTensor<DType> {
             typedef mshadow::Tensor<mshadow::gpu, dimension, DType> gpu_tensor_t;
             RightType right;
         #endif
+
+        auto shape() -> decltype(mshadow::expr::ShapeCheck<kDim, LeftType>::Check(
+                            left
+                        )) {
+            return mshadow::expr::ShapeCheck<kDim, LeftType>::Check(
+                left
+            );
+        }
 
         #ifdef DALI_USE_CUDA
             LazyTensor(
