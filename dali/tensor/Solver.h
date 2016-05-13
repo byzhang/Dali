@@ -30,11 +30,13 @@ namespace Solver {
         public:
             Method method;
 
-            R clipval;
+            R clip_abs;
+            R clip_norm;
+
             R smooth_eps;
             R regc;
             AbstractSolver();
-            AbstractSolver(R clipval, R smooth_eps, R regc, Method method);
+            AbstractSolver(R clip_norm, R smooth_eps, R regc, Method method);
             virtual void step( std::vector<Mat<R>>& ) = 0;
             virtual void reset_caches( std::vector<Mat<R>>&);
             virtual void create_gradient_caches(std::vector<Mat<R>>&);
@@ -45,8 +47,8 @@ namespace Solver {
             // This can be overriden by parameter passed to step function.
             R step_size = SOLVER_MAT_DEFAULT_STEP_SIZE_H;
 
-            SGD (R clipval = 5.0, R regc = 0.0);
-            SGD (std::vector<Mat<R>>&, R clipval = 5.0, R regc = 0.0);
+            SGD (R clip_norm = 5.0, R regc = 0.0);
+            SGD (std::vector<Mat<R>>&, R clip_norm = 5.0, R regc = 0.0);
             virtual void step( std::vector<Mat<R>>&);
             virtual void step( std::vector<Mat<R>>&, R step_size);
     };
@@ -57,8 +59,8 @@ namespace Solver {
             R step_size = SOLVER_MAT_DEFAULT_STEP_SIZE_H;
 
             std::unordered_map<cache_key_t<R>, cache_t<R>> gsums;
-            AdaGrad (R smooth_eps = SMOOTH_DEFAULT, R clipval = 100.0, R regc = 0.0);
-            AdaGrad (std::vector<Mat<R>>&, R smooth_eps = SMOOTH_DEFAULT, R clipval = 100.0, R regc = 0.0);
+            AdaGrad (R smooth_eps = SMOOTH_DEFAULT, R clip_norm = 100.0, R regc = 0.0);
+            AdaGrad (std::vector<Mat<R>>&, R smooth_eps = SMOOTH_DEFAULT, R clip_norm = 100.0, R regc = 0.0);
             virtual void step( std::vector<Mat<R>>&);
             virtual void step( std::vector<Mat<R>>&, R step_size);
             virtual void create_gradient_caches(std::vector<Mat<R>>&);
@@ -70,8 +72,8 @@ namespace Solver {
             R step_size = SOLVER_MAT_DEFAULT_STEP_SIZE_H;
             R decay_rate;
 
-            RMSProp (R _decay_rate= 0.999, R smooth_eps = SMOOTH_DEFAULT, R clipval = 100.0, R regc = 0.0);
-            RMSProp (std::vector<Mat<R>>&, R _decay_rate= 0.999, R smooth_eps = SMOOTH_DEFAULT, R clipval = 100.0, R regc = 0.0);
+            RMSProp (R _decay_rate= 0.999, R smooth_eps = SMOOTH_DEFAULT, R clip_norm = 100.0, R regc = 0.0);
+            RMSProp (std::vector<Mat<R>>&, R _decay_rate= 0.999, R smooth_eps = SMOOTH_DEFAULT, R clip_norm = 100.0, R regc = 0.0);
             virtual void step(std::vector<Mat<R>>&);
             virtual void step(std::vector<Mat<R>>&, R step_size);
     };
@@ -86,8 +88,8 @@ namespace Solver {
             std::unordered_map<cache_key_t<R>, cache_t<R>> g_cache;
             std::unordered_map<cache_key_t<R>, cache_t<R>> momentum_cache;
 
-            RMSPropMomentum (R decay_rate= 0.95, R momentum=0.9, R step_size=1e-4, R smooth_eps = 1e-4, R clipval = 100.0, R regc = 0.0);
-            RMSPropMomentum (std::vector<Mat<R>>&, R decay_rate= 0.95, R momentum=0.9, R step_size=1e-4, R smooth_eps = 1e-4, R clipval = 100.0, R regc = 0.0);
+            RMSPropMomentum (R decay_rate= 0.95, R momentum=0.9, R step_size=1e-4, R smooth_eps = 1e-4, R clip_norm = 100.0, R regc = 0.0);
+            RMSPropMomentum (std::vector<Mat<R>>&, R decay_rate= 0.95, R momentum=0.9, R step_size=1e-4, R smooth_eps = 1e-4, R clip_norm = 100.0, R regc = 0.0);
             virtual void step(std::vector<Mat<R>>&);
             virtual void step(std::vector<Mat<R>>&, R step_size);
             virtual void create_gradient_caches(std::vector<Mat<R>>&);
@@ -99,8 +101,8 @@ namespace Solver {
             R rho;
             std::unordered_map<cache_key_t<R>, cache_t<R>> xsums;
             std::unordered_map<cache_key_t<R>, cache_t<R>> gsums;
-            AdaDelta (R rho= 0.95, R smooth_eps = 1e-4, R clipval = 100.0, R regc = 0.0);
-            AdaDelta (std::vector<Mat<R>>&, R rho= 0.95, R smooth_eps = 1e-4, R clipval = 100.0, R regc = 0.0);
+            AdaDelta (R rho= 0.95, R smooth_eps = 1e-4, R clip_norm = 100.0, R regc = 0.0);
+            AdaDelta (std::vector<Mat<R>>&, R rho= 0.95, R smooth_eps = 1e-4, R clip_norm = 100.0, R regc = 0.0);
             virtual void step(std::vector<Mat<R>>&);
             virtual void create_gradient_caches(std::vector<Mat<R>>&);
             virtual void reset_caches(std::vector<Mat<R>>&);
@@ -115,8 +117,8 @@ namespace Solver {
             unsigned long long epoch;
             std::unordered_map<cache_key_t<R>, cache_t<R>> xsums;
             std::unordered_map<cache_key_t<R>, cache_t<R>> gsums;
-            Adam (R step_size = 0.0002, R b1 = 0.5, R b2 = 1e-6, R smooth_eps = SMOOTH_DEFAULT, R clipval = 100.0, R regc = 0.0);
-            Adam (std::vector<Mat<R>>&, R step_size = 0.0002, R b1 = 0.5, R b2 = 1e-6, R smooth_eps = SMOOTH_DEFAULT, R clipval = 100.0, R regc = 0.0);
+            Adam (R step_size = 0.0002, R b1 = 0.5, R b2 = 1e-6, R smooth_eps = SMOOTH_DEFAULT, R clip_norm = 100.0, R regc = 0.0);
+            Adam (std::vector<Mat<R>>&, R step_size = 0.0002, R b1 = 0.5, R b2 = 1e-6, R smooth_eps = SMOOTH_DEFAULT, R clip_norm = 100.0, R regc = 0.0);
             virtual void step(std::vector<Mat<R>>&);
             virtual void step(std::vector<Mat<R>>&, R step_size);
             virtual void create_gradient_caches(std::vector<Mat<R>>&);

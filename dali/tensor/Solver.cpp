@@ -50,18 +50,20 @@ namespace Solver {
     /* Abstract Solver */
     template<typename R>
     AbstractSolver<R>::AbstractSolver() :
-            clipval(std::numeric_limits<R>::infinity),
+            clip_norm(0),
+            clip_abs(0),
             smooth_eps(SMOOTH_DEFAULT),
             regc(0.0),
             method(METHOD_UNINITIALIZED) {
     }
 
     template<typename R>
-    AbstractSolver<R>::AbstractSolver(R _clipval,
+    AbstractSolver<R>::AbstractSolver(R _clip_norm,
                                       R _smooth_eps,
                                       R _regc,
                                       Method _method) :
-            clipval(_clipval),
+            clip_norm(_clip_norm),
+            clip_abs(0),
             smooth_eps(_smooth_eps),
             regc(_regc),
             method(_method) {
@@ -74,15 +76,15 @@ namespace Solver {
 
     /* SGD */
     template<typename R>
-    SGD<R>::SGD (R clipval, R regc) :
-            AbstractSolver<R>(clipval, 0.0, regc, METHOD_SGD) {
+    SGD<R>::SGD (R clip_norm, R regc) :
+            AbstractSolver<R>(clip_norm, 0.0, regc, METHOD_SGD) {
     }
 
     template<typename R>
     SGD<R>::SGD (
         vector<Mat<R>>& parameters,
-        R clipval,
-        R regc) : AbstractSolver<R>(clipval, 0.0, regc, METHOD_SGD) {};
+        R clip_norm,
+        R regc) : AbstractSolver<R>(clip_norm, 0.0, regc, METHOD_SGD) {};
 
     template<typename R>
     void SGD<R>::step (vector<Mat<R>>& parameters, R step_size) {
@@ -90,7 +92,7 @@ namespace Solver {
             if (nan_protection && param.is_grad_nan()) {
                 std::cout << "WARNING: Ignoring gradient update because of NaNs." << std::endl;
             } else {
-                MatOps<R>::clip_and_regularize(param, this->clipval, this->regc);
+                MatOps<R>::clip_and_regularize(param, this->clip_abs, this->clip_norm, this->regc);
                 MatOps<R>::sgd_update(param, step_size);
             }
             // reset gradient
@@ -110,16 +112,16 @@ namespace Solver {
     template<typename R>
     AdaGrad<R>::AdaGrad (
             R smooth_eps,
-            R clipval,
-            R regc) : AbstractSolver<R>(clipval, smooth_eps, regc, METHOD_ADAGRAD) {
+            R clip_norm,
+            R regc) : AbstractSolver<R>(clip_norm, smooth_eps, regc, METHOD_ADAGRAD) {
     }
 
     template<typename R>
     AdaGrad<R>::AdaGrad (
             vector<Mat<R>>& parameters,
             R smooth_eps,
-            R clipval,
-            R regc) : AbstractSolver<R>(clipval, smooth_eps, regc, METHOD_ADAGRAD) {
+            R clip_norm,
+            R regc) : AbstractSolver<R>(clip_norm, smooth_eps, regc, METHOD_ADAGRAD) {
         create_gradient_caches(parameters);
     }
 
@@ -145,7 +147,7 @@ namespace Solver {
             } else {
                 auto& s = gsums.at(PARAM_KEY_FOR_LOOKUP_TABLE);
 
-                MatOps<R>::clip_and_regularize(param, this->clipval, this->regc);
+                MatOps<R>::clip_and_regularize(param, this->clip_abs, this->clip_norm, this->regc);
                 MatOps<R>::adagrad_update(param, s, step_size, this->smooth_eps);
             }
 
@@ -168,8 +170,8 @@ namespace Solver {
     RMSProp<R>::RMSProp (
             R _decay_rate,
             R smooth_eps,
-            R clipval,
-            R regc) : AdaGrad<R>(smooth_eps, clipval, regc),
+            R clip_norm,
+            R regc) : AdaGrad<R>(smooth_eps, clip_norm, regc),
                       decay_rate(_decay_rate) {
         this->method = METHOD_RMSPROP;
     }
@@ -179,8 +181,8 @@ namespace Solver {
             vector<Mat<R>>& parameters,
             R _decay_rate,
             R smooth_eps,
-            R clipval,
-            R regc) : AdaGrad<R>(parameters, smooth_eps, clipval, regc),
+            R clip_norm,
+            R regc) : AdaGrad<R>(parameters, smooth_eps, clip_norm, regc),
                       decay_rate(_decay_rate) {
         this->method = METHOD_RMSPROP;
     }
@@ -197,7 +199,7 @@ namespace Solver {
             } else {
                 auto& s = this->gsums[PARAM_KEY_FOR_LOOKUP_TABLE];
 
-                MatOps<R>::clip_and_regularize(param, this->clipval, this->regc);
+                MatOps<R>::clip_and_regularize(param, this->clip_abs, this->clip_norm, this->regc);
                 MatOps<R>::rmsprop_update(param, s, decay_rate, step_size, this->smooth_eps);
             }
 
@@ -223,8 +225,8 @@ namespace Solver {
             R momentum,
             R step_size,
             R smooth_eps,
-            R clipval,
-            R regc) : AbstractSolver<R>(clipval, smooth_eps, regc, METHOD_RMSPROPMOMENTUM),
+            R clip_norm,
+            R regc) : AbstractSolver<R>(clip_norm, smooth_eps, regc, METHOD_RMSPROPMOMENTUM),
                       decay_rate(decay_rate),
                       momentum(momentum),
                       step_size(step_size) {
@@ -237,8 +239,8 @@ namespace Solver {
             R momentum,
             R step_size,
             R smooth_eps,
-            R clipval,
-            R regc) : AbstractSolver<R>(clipval, smooth_eps, regc, METHOD_RMSPROPMOMENTUM),
+            R clip_norm,
+            R regc) : AbstractSolver<R>(clip_norm, smooth_eps, regc, METHOD_RMSPROPMOMENTUM),
                       decay_rate(decay_rate),
                       momentum(momentum),
                       step_size(step_size) {
@@ -275,7 +277,7 @@ namespace Solver {
                 auto& g = g_cache.at(PARAM_KEY_FOR_LOOKUP_TABLE);
                 auto& m = momentum_cache.at(PARAM_KEY_FOR_LOOKUP_TABLE);
 
-                MatOps<R>::clip_and_regularize(param, this->clipval, this->regc);
+                MatOps<R>::clip_and_regularize(param, this->clip_abs, this->clip_norm, this->regc);
                 MatOps<R>::rmsprop_momentum_update(
                         param, n, g, m, decay_rate, momentum,
                         step_size_override, this->smooth_eps);
@@ -300,8 +302,8 @@ namespace Solver {
     AdaDelta<R>::AdaDelta (
             R _rho,
             R smooth_eps,
-            R clipval,
-            R regc) : AbstractSolver<R>(clipval, smooth_eps, regc, METHOD_ADADELTA),
+            R clip_norm,
+            R regc) : AbstractSolver<R>(clip_norm, smooth_eps, regc, METHOD_ADADELTA),
                       rho(_rho) {
     }
 
@@ -310,8 +312,8 @@ namespace Solver {
             vector<Mat<R>>& parameters,
             R _rho,
             R smooth_eps,
-            R clipval,
-            R regc) : AbstractSolver<R>(clipval, smooth_eps, regc, METHOD_ADADELTA),
+            R clip_norm,
+            R regc) : AbstractSolver<R>(clip_norm, smooth_eps, regc, METHOD_ADADELTA),
                       rho(_rho) {
         create_gradient_caches(parameters);
     }
@@ -340,7 +342,7 @@ namespace Solver {
                 auto& gsum = gsums.at(PARAM_KEY_FOR_LOOKUP_TABLE);
                 auto& xsum = xsums.at(PARAM_KEY_FOR_LOOKUP_TABLE);
 
-                MatOps<R>::clip_and_regularize(param, this->clipval, this->regc);
+                MatOps<R>::clip_and_regularize(param, this->clip_abs, this->clip_norm, this->regc);
                 MatOps<R>::adadelta_update(param, gsum, xsum, rho, this->smooth_eps);
             }
 
@@ -361,8 +363,8 @@ namespace Solver {
             R _b1,
             R _b2,
             R smooth_eps,
-            R clipval,
-            R regc) : AbstractSolver<R>(clipval, smooth_eps, regc, METHOD_ADAM),
+            R clip_norm,
+            R regc) : AbstractSolver<R>(clip_norm, smooth_eps, regc, METHOD_ADAM),
                       step_size(_step_size), b1(_b1), b2(_b2), epoch(0) {
     }
 
@@ -373,8 +375,8 @@ namespace Solver {
             R _b1,
             R _b2,
             R smooth_eps,
-            R clipval,
-            R regc) : AbstractSolver<R>(clipval, smooth_eps, regc, METHOD_ADAM),
+            R clip_norm,
+            R regc) : AbstractSolver<R>(clip_norm, smooth_eps, regc, METHOD_ADAM),
                       step_size(_step_size), b1(_b1), b2(_b2), epoch(0) {
         create_gradient_caches(parameters);
     }
@@ -406,7 +408,7 @@ namespace Solver {
                 auto& m = gsums.at(PARAM_KEY_FOR_LOOKUP_TABLE);
                 auto& v = xsums.at(PARAM_KEY_FOR_LOOKUP_TABLE);
 
-                MatOps<R>::clip_and_regularize(param, this->clipval, this->regc);
+                MatOps<R>::clip_and_regularize(param, this->clip_abs, this->clip_norm, this->regc);
 
                 MatOps<R>::adam_update(param, m, v, b1, b2, this->smooth_eps, step_size, epoch);
             }

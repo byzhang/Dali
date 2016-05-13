@@ -11,11 +11,40 @@ namespace matops {
     using namespace TensorOps;
 
     template<typename R>
-    void SolverUpdates<R>::clip_and_regularize(Mat<R> param, R clipval, R regc) {
-        if (regc > 0) {
-            GRAD(param) = F<op::clip<R>>(GRAD(param).wrapper(), clipval) + (regc * MAT(param).wrapper());
+    void SolverUpdates<R>::clip_and_regularize(Mat<R> param, R clip_abs, R clip_norm, R regc) {
+        bool use_regc = regc > 0;
+        bool use_abs_clip = clip_abs > 0;
+
+        bool use_norm_clip = clip_norm > 0;
+
+        R norm;
+        if (use_norm_clip) {
+            // compute norm conditionally
+            norm = param.dw().L2_norm();
+            // cancel normalization if norm is below threshold
+            if (norm <= clip_norm) {
+                use_norm_clip = false;
+            }
+        }
+
+        if (use_regc) {
+            if (!use_abs_clip && !use_norm_clip) {
+                GRAD(param) = GRAD(param).wrapper() + regc * MAT(param).wrapper();
+            } else if (use_abs_clip && !use_norm_clip) {
+                GRAD(param) = F<op::clip<R>>(GRAD(param).wrapper(), clip_abs) + (regc * MAT(param).wrapper());
+            } else if (!use_abs_clip && use_norm_clip) {
+                GRAD(param) = (clip_norm / norm) * GRAD(param).wrapper() + (regc * MAT(param).wrapper());
+            } else if (use_abs_clip && use_norm_clip) {
+                GRAD(param) = F<op::clip<R>>((clip_norm / norm) * GRAD(param).wrapper(), clip_abs) + (regc * MAT(param).wrapper());
+            }
         } else {
-            GRAD(param) = F<op::clip<R>>(GRAD(param).wrapper(), clipval);
+            if (use_abs_clip && !use_norm_clip) {
+                GRAD(param) = F<op::clip<R>>(GRAD(param).wrapper(), clip_abs);
+            } else if (!use_abs_clip && use_norm_clip) {
+                GRAD(param) = (clip_norm / norm) * GRAD(param).wrapper();
+            } else if (use_abs_clip && use_norm_clip) {
+                GRAD(param) = F<op::clip<R>>(GRAD(param).wrapper(), clip_abs);
+            }
         }
     }
 

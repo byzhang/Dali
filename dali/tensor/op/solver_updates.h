@@ -10,7 +10,7 @@ template<typename R> class Mat;
 namespace matops {
     template<typename R>
     struct SolverUpdates {
-        static void clip_and_regularize(Mat<R> param, R clipval, R regc);
+        static void clip_and_regularize(Mat<R> param, R clip_abs, R clip_norm, R regc);
 
         static void regularize(Mat<R> param, R regc);
 
