@@ -148,7 +148,7 @@ namespace matops {
         if (matrix.dims(1) == 1)
             return matrix;
         Mat<R> out(matrix.dims(0), 1, weights<R>::empty());
-        R ne = matrix.number_of_elements();
+        R ne = matrix.dims(1);
 
         MAT(out).ravel() = reduce_to_1d<0, mshadow::red::sum>(MAT(matrix).wrapper());
         MAT(out).ravel() /= ne;
@@ -165,7 +165,7 @@ namespace matops {
         if (matrix.dims(0) == 1)
             return matrix;
         Mat<R> out(1, matrix.dims(1), weights<R>::empty());
-        R ne = matrix.number_of_elements();
+        R ne = matrix.dims(0);
         MAT(out).ravel() = reduce_to_1d<1, mshadow::red::sum>(MAT(matrix).wrapper());
         MAT(out).ravel() /= ne;
 
