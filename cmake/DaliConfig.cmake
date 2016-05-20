@@ -71,7 +71,7 @@ if(DALI_LIBRARIES)
 
     message(STATUS "Found Dali: " ${DALI_LIBRARIES})
     list(APPEND DALI_AND_DEPS_LIBRARIES ${DALI_LIBRARIES})
-else(DALI_CORE_LIBRARIES)
+else(DALI_LIBRARIES)
     if(Dali_FIND_QUIETLY)
         message(STATUS "Failed to find Dali   " ${REASON_MSG} ${ARGN})
     elseif(Dali_FIND_REQUIRED)
@@ -81,7 +81,7 @@ else(DALI_CORE_LIBRARIES)
         # but continues configuration and allows generation.
         message(WARNING "Failed to find Dali   " ${REASON_MSG} ${ARGN})
     endif()
-endif(DALI_CORE_LIBRARIES)
+endif(DALI_LIBRARIES)
 
 find_path(DALI_CONFIG_PATH "dali/config.h" ${CMAKE_INCLUDE_PATH})
 if (NOT DALI_CONFIG_PATH)
