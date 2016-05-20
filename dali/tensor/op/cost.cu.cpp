@@ -313,7 +313,8 @@ namespace matops {
         Mat<R> probs = softmax_no_grad_colwise(matrix);
         select_from_cols(MAT(out), MAT(probs), targets.w().ravel());
 
-        MAT(out) = (R)-1.0 * F<op::log<R>>(MAT(out).wrapper());
+        MAT(out) = (R)-1.0 * F<op::log<R>>(F<op::max_scalar<R>>(
+              MAT(out).wrapper(), std::numeric_limits<R>::min()));
         if (graph::backprop_enabled()) {
             graph::emplace_back([matrix, probs, out, targets]() mutable {
                 if (!matrix.constant) {
@@ -363,7 +364,8 @@ namespace matops {
         select_from_rows(MAT(out), MAT(probs), targets.w().ravel());
 
 
-        MAT(out) = (R)-1.0 * F<op::log<R>>(MAT(out).wrapper());
+        MAT(out) = (R)-1.0 * F<op::log<R>>(F<op::max_scalar<R>>(
+              MAT(out).wrapper(), std::numeric_limits<R>::min()));
 
         if (graph::backprop_enabled()) {
             graph::emplace_back([matrix, probs, out, targets]() mutable {
