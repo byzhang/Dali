@@ -38,3 +38,5 @@ notifications:
         on_failure: always
     slack:
         secure: IGmNrwpfBlZN9MuLyo6QnBZ3AKff3vuNKjDejtF4CyJbLxndynszA+HyXj9PuUiavIS3fTrDxfUs/t/e0CNnBU9zKvq0tpdCtn4MzRCxq0srNxDS0fCqKYW9NGw4wMlvHk6O2k6357KTddouaBrbMpWW7j8Zt7/6z+23bPES/itUA5/2H3JlhA9M9daArjIbmZmaYlkAY+0qVCgv3z3vta9e++GAY7XrJxuhTnSkkM+4QWXvGTXzNyVPfXmq3OsIVZGF6ze3nDwg9hmUZpglLuowsZO8bvWr/LF5G7GfhiWhuxsh1kYveocY1PNdO5g+aUO5BBvcQWT/RcczCRDeCt0DnxASj1KhAcPFzpe6uPLE28lP1o9g+kIGoKgru+/YyenTatbMHHFDI6fOKv0oJ/kGOffkZJFFT35/riAATqHoIhI8BhyuHUkyzoCLC/jMa342l4lp2FAhInkOZs88Dls9d0WWHl4tJE1YrqwuknMev7l1PANCM+kD5EmzAHUA3hhYq5qWbnu8a73fVx8s1BcpoyAF6MrWAK6swANUhxBQ5Nz5mBSsn77l9aftmPAo1F4xGF1enY+hz2mBu9ElEYee0GhVfSJSujZxaY4vBDdohD67CgYLHoUjQGnkJIsqvU8ig18cg3dZWNjiC7lL1xsyg2Ihw/WdEduzNwhZOfg=
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
