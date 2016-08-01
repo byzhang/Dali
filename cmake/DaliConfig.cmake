@@ -50,7 +50,7 @@ if(CUDA_FOUND STREQUAL TRUE)
 endif(CUDA_FOUND STREQUAL TRUE)
 
 
-find_library(DALI_LIBRARIES dali)
+find_library(DALI_LIBRARIES dali PATH "$ENV{DALI_HOME}/build/dali")
 if(DALI_LIBRARIES)
     set(DALI_FOUND TRUE)
     IF (APPLE)
@@ -83,7 +83,8 @@ else(DALI_LIBRARIES)
     endif()
 endif(DALI_LIBRARIES)
 
-find_path(DALI_CONFIG_PATH "dali/config.h" ${CMAKE_INCLUDE_PATH})
+find_path(DALI_MSHADOW_PATH "mshadow/tensor.h" PATH "$ENV{DALI_HOME}/third_party/mshadow/")
+find_path(DALI_CONFIG_PATH "dali/config.h" PATH "$ENV{DALI_HOME}/build/generated/")
 if (NOT DALI_CONFIG_PATH)
     if (Dali_FIND_REQUIRED)
         message(FATAL_ERROR "${Red} Failed to find Dali headers  ${ColorReset}" ${REASON_MSG} ${ARGN})
@@ -93,7 +94,7 @@ if (NOT DALI_CONFIG_PATH)
 
     set(DALI_FOUND FALSE)
 else()
-    list(APPEND DALI_INCLUDE_DIRS ${DALI_CONFIG_PATH})
+    list(APPEND DALI_INCLUDE_DIRS ${DALI_CONFIG_PATH} ${DALI_MSHADOW_PATH})
 
     list(APPEND DALI_AND_DEPS_INCLUDE_DIRS ${DALI_INCLUDE_DIRS})
 endif(NOT DALI_CONFIG_PATH)

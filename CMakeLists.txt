@@ -63,13 +63,12 @@ find_package(BLAS REQUIRED)
 find_package(OpenBlas)
 find_package(GooglePerfTools)
 find_package(MKL)
-find_package(GTest)
 find_package(CUDA)
 # (Note: in certain cases BLAS is found
 # by detecting Atlas, so we find this package
 # separately again to obtain its dependencies)
 find_package(Atlas)
- 
+
 IF (OpenBLAS_FOUND)
   message(STATUS "openblas found")
 ENDIF (OpenBLAS_FOUND)
@@ -144,6 +143,21 @@ endif (WITH_CUDA)
 ################################################################################
 ##                            TESTING SETUP                                   ##
 ################################################################################
+##################################
+# Download and install GoogleTest
+
+include(ExternalProject)
+ExternalProject_Add(gtest
+  URL https://googletest.googlecode.com/files/gtest-1.7.0.zip
+  # Comment above line, and uncomment line below to use subversion.
+  # SVN_REPOSITORY http://googletest.googlecode.com/svn/trunk/
+  # Uncomment line below to freeze a revision (here the one for 1.7.0)
+  # SVN_REVISION -r700
+
+  PREFIX ${CMAKE_CURRENT_BINARY_DIR}/gtest
+  INSTALL_COMMAND ""
+)
+ExternalProject_Get_Property(gtest source_dir binary_dir)
 
 # This monstrosity came to live to alleviate two conditions:
 #      1) ctest ignores colored output
@@ -154,7 +168,7 @@ function(add_testsuite TEST_TARGET TEST_DEPENDENCIES TEST_FILES)
     if(GTEST_FOUND)
         add_executable(${TEST_TARGET} ${TEST_FILES})
         add_dependencies(${TEST_TARGET} ${TEST_DEPENDENCIES})
-        target_link_libraries(${TEST_TARGET} ${TEST_DEPENDENCIES} ${GTEST_BOTH_LIBRARIES})
+        target_link_libraries(${TEST_TARGET} ${TEST_DEPENDENCIES} ${binary_dir}/libgtest.a ${binary_dir}/libgtest_main.a)
         add_test(${TEST_TARGET} ${TEST_TARGET})
         add_dependencies(build_tests ${TEST_TARGET})
         add_custom_target(${TEST_TARGET}_run ${TEST_TARGET})
@@ -162,10 +176,11 @@ function(add_testsuite TEST_TARGET TEST_DEPENDENCIES TEST_FILES)
     endif(GTEST_FOUND)
 endfunction(add_testsuite)
 
+SET(GTEST_FOUND 1)
 if(GTEST_FOUND)
     enable_testing()
     set(CTEST_OUTPUT_ON_FAILURE TRUE)
-    include_directories(${GTEST_INCLUDE_DIRS})
+    include_directories(${source_dir}/include)
     add_custom_target(run_tests true)
     add_custom_target(build_tests)
     add_dependencies(run_tests build_tests)
