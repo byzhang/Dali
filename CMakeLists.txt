@@ -6,6 +6,9 @@ set(PROJECT_VERSION_MAJOR 1)
 set(PROJECT_VERSION_MINOR 0)
 set(PROJECT_VERSION_PATCH 0)
 
+SET (CMAKE_EXPORT_COMPILE_COMMANDS 1)
+set (CMAKE_EXPORT_COMPILE_COMMANDS "${CMAKE_EXPORT_COMPILE_COMMANDS}" CACHE STRING "export compile_commands.json")
+
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 if( UNIX AND NOT APPLE )
@@ -90,7 +93,7 @@ find_package(BLAS REQUIRED)
 find_package(OpenBlas QUIET)
 find_package(GooglePerfTools QUIET)
 find_package(MKL QUIET)
-find_package(GTest QUIET)
+# find_package(GTest QUIET)
 find_package(CUDA)
 
 if (NOT OpenBLAS_FOUND)
@@ -394,6 +397,21 @@ endif(WITH_CUDA)
 ##                                   ---                                      ##
 ##                                TESTING                                     ##
 ################################################################################
+##################################
+# Download and install GoogleTest
+
+include(ExternalProject)
+ExternalProject_Add(gtest
+  URL https://googletest.googlecode.com/files/gtest-1.7.0.zip
+  # Comment above line, and uncomment line below to use subversion.
+  # SVN_REPOSITORY http://googletest.googlecode.com/svn/trunk/ 
+  # Uncomment line below to freeze a revision (here the one for 1.7.0)
+  # SVN_REVISION -r700
+
+  PREFIX ${CMAKE_CURRENT_BINARY_DIR}/gtest
+  INSTALL_COMMAND ""
+)
+ExternalProject_Get_Property(gtest source_dir binary_dir)
 
 # This monstrosity came to live to alleviate two conditions:
 #      1) ctest ignores colored output
@@ -408,17 +426,18 @@ function(add_testsuite TEST_TARGET RUN_TARGET TEST_DEPENDENCIES TEST_FILES DEVIC
         endif(DEVICE STREQUAL "GPU")
 
         add_dependencies(${TEST_TARGET} ${TEST_DEPENDENCIES})
-        target_link_libraries(${TEST_TARGET} ${TEST_DEPENDENCIES} ${GTEST_BOTH_LIBRARIES})
+        target_link_libraries(${TEST_TARGET} ${TEST_DEPENDENCIES} ${binary_dir}/libgtest.a ${binary_dir}/libgtest_main.a)
         add_test(${TEST_TARGET} ${TEST_TARGET})
         add_custom_target(${TEST_TARGET}_hidden_run_target ${TEST_TARGET})
         add_custom_target(${RUN_TARGET} true)
         add_dependencies(${RUN_TARGET} ${TEST_TARGET}_hidden_run_target)
 endfunction(add_testsuite)
 
+SET(GTEST_FOUND 1)
 if(GTEST_FOUND)
     enable_testing()
     set(CTEST_OUTPUT_ON_FAILURE TRUE)
-    include_directories(${GTEST_INCLUDE_DIRS})
+    include_directories(${source_dir}/include)
     ADD_CUSTOM_TARGET(run_tests_heapcheck
         COMMAND ${PROJECT_SOURCE_DIR}/scripts/test_runner.sh ${CMAKE_BINARY_DIR}
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
