@@ -308,7 +308,8 @@ DALI_TENSOR_INTERNAL_PRINT(int)
 template<typename R, int dimension>
 void TensorInternal<R,dimension>::print(std::basic_ostream<char>& stream, int indent) const {
     static_assert (dimension > 1, "Print called with wrong dimension.");
-    stream << std::string(indent, ' ') << "[" << std::endl;
+    stream << "shared counts:" << memory_.use_count()
+           << std::string(indent, ' ') << "[" << std::endl;
     for (int i=0; i < shape[0]; ++i)
         (*this)[i].print(stream, indent + 4);
     stream << std::string(indent, ' ') <<"]" << std::endl;

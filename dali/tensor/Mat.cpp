@@ -229,6 +229,7 @@ void Mat<R>::set_name(const char * _name) {
 template<typename R>
 void Mat<R>::print(std::basic_ostream<char>& stream) const {
     if (m != nullptr) {
+        stream << "m shared counts:" << m.use_count() << std::endl;
         w().print(stream);
     } else {
         stream << "[]";
