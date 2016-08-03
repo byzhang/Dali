@@ -155,7 +155,7 @@ class TensorInternal {
 
         TensorInternal() = default;
 
-        TensorInternal(mshadow::Shape<dimension> shape);
+        TensorInternal(mshadow::Shape<dimension> shape, Device preferred_device = default_preferred_device);
 
 
         TensorInternal(mshadow::Shape<dimension> shape,

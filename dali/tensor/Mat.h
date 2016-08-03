@@ -69,12 +69,12 @@ class Mat {
         Mat();
 
         // Initializes with zeros;
-        Mat (dim_t n, dim_t d);
+        Mat (dim_t n, dim_t d, Device preferred_device = default_preferred_device);
         // sometimes we don't need to reset m
         // (for example if it's about to be assigned).
-        explicit Mat (dim_t n, dim_t d, bool fill_zeros);
+        explicit Mat (dim_t n, dim_t d, bool fill_zeros, Device preferred_device = default_preferred_device);
         explicit Mat (dim_t n, dim_t d,
-             typename weights<R>::initializer_t wi);
+             typename weights<R>::initializer_t wi, Device preferred_device = default_preferred_device);
         /*
         A copy constructor that perform shallow and deep
         copies of a Mat.

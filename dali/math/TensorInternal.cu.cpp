@@ -41,12 +41,12 @@ template std::ostream& operator<< <8>(std::ostream& strm, const mshadow::Shape<8
 template std::ostream& operator<< <9>(std::ostream& strm, const mshadow::Shape<9>& a);
 
 template<typename R, int dimension>
-TensorInternal<R,dimension>::TensorInternal(mshadow::Shape<dimension> _shape) :
+TensorInternal<R,dimension>::TensorInternal(mshadow::Shape<dimension> _shape, Device preferred_device) :
         shape(_shape),
         offset(0) {
     // we treat the special case of empty matrix
     // as uninitalized memory:
-    memory_ = std::make_shared<SynchronizedMemory<R>>(shape.Size(), shape[dimension - 1], default_preferred_device);
+    memory_ = std::make_shared<SynchronizedMemory<R>>(shape.Size(), shape[dimension - 1], preferred_device);
 }
 
 template<typename R, int dimension>
